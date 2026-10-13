@@ -33,7 +33,9 @@ export const LOW_CONFIDENCE = 0.7;
 /** Strip control characters, collapse whitespace and cap the length. */
 export function sanitizeText(value: unknown, max = 120): string {
   if (typeof value !== 'string') return '';
+  // Intentional: strip control characters from model output.
   // deno-lint-ignore no-control-regex
+  // oxlint-disable-next-line no-control-regex
   return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 

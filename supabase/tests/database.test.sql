@@ -226,7 +226,7 @@ select is((select (claim_ai_quota('scan') ->> 'allowed')::boolean), false, 'the 
 select is((select (claim_ai_quota('command') ->> 'allowed')::boolean), true, 'commands have their own quota');
 select throws_ok($$ delete from ai_usage $$, '42501', null, 'users cannot delete quota rows');
 
-select is((select (load_demo_data() ->> 'active_items')::int), 22, 'demo data loads 22 active items');
+select is((select (load_demo_data() ->> 'active_items')::int), 23, 'demo data loads 23 active items');
 select ok((select items_used > 0 and money_saved_cents > 0 from user_stats where period = 'all_time'), 'user_stats has all-time totals');
 
 select * from finish();

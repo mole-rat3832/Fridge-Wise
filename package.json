@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-icons.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "test:db": "supabase test db",
     "icons": "node scripts/generate-icons.mjs",
+    "vapid": "node scripts/generate-vapid-keys.mjs",
     "types": "supabase gen types typescript --local > src/types/database.ts"
   },
   "dependencies": {
@@ -45,5 +48,8 @@
     "workbox-routing": "^7.4.1",
     "workbox-strategies": "^7.4.1",
     "workbox-window": "^7.4.1"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

@@ -80,6 +80,7 @@ begin
     ('Orange Juice',     'Tropicana',     'beverages',  'fridge', 52.0,  'fl_oz',  429,  2,   6,   1,    'shelf_life_table'),
     ('Carrots',          null,            'produce',    'fridge',  2.0,  'lb',     249,  5,  14,   null, 'shelf_life_table'),
     ('Large Eggs',       'Vital Farms',   'eggs',       'fridge', 12.0,  'count',  629,  7,  18,   null, 'printed_date'),
+    ('Large Eggs',       'Vital Farms',   'eggs',       'fridge', 12.0,  'count',  629,  1,  27,   null, 'printed_date'),
     ('Cheddar Cheese',   'Tillamook',     'dairy',      'fridge',  8.0,  'oz',     479, 10,  25,   4,    'shelf_life_table'),
     ('Apples',           'Honeycrisp',    'produce',    'fridge',  6.0,  'count',  499,  4,  30,   null, 'shelf_life_table'),
     ('Butter',           'Kerrygold',     'dairy',      'fridge',  8.0,  'oz',     499, 12,  45,   5,    'printed_date'),
