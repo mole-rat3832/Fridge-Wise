@@ -677,8 +677,11 @@ $$;
 -- ---------------------------------------------------------------------------
 -- claim_ai_quota(kind, ref_id): called by the edge functions before every Gemini request.
 -- 40 scans and 60 AI commands (recipes count as commands) per user per local day.
--- Counting rows in ai_usage; an advisory lock makes the check-and-insert atomic.
--- Re-processing the same scan (ref_id) does not use quota again.
+-- Every attempt is recorded in ai_usage, which users can read and insert but never change,
+-- so the limits cannot be reset from the client:
+--   * a scan counts once per day toward the 40, however often it is retried;
+--   * one scan can be processed at most 3 times in total.
+-- An advisory lock makes the check-and-insert atomic.
 -- ---------------------------------------------------------------------------
 create or replace function public.claim_ai_quota(p_kind text, p_ref_id uuid default null)
 returns jsonb
@@ -691,6 +694,8 @@ declare
   v_bucket text;
   v_limit integer;
   v_used integer;
+  v_attempts integer;
+  v_counted boolean := false;
   v_tz text;
   v_start timestamptz;
 begin
@@ -709,31 +714,43 @@ begin
 
   perform pg_advisory_xact_lock(hashtextextended(v_uid::text || ':' || v_bucket, 0));
 
-  if p_ref_id is not null and exists (
-    select 1 from public.ai_usage where user_id = v_uid and kind = p_kind and ref_id = p_ref_id
-  ) then
-    return jsonb_build_object('allowed', true, 'limit', v_limit, 'reused', true);
-  end if;
-
   v_tz := private.user_timezone(v_uid);
   v_start := date_trunc('day', now() at time zone v_tz) at time zone v_tz;
 
-  select count(*) into v_used
-    from public.ai_usage
-    where user_id = v_uid
-      and created_at >= v_start
-      and (case when v_bucket = 'scan' then kind = 'scan' else kind in ('command', 'recipe') end);
-
-  if v_used >= v_limit then
-    return jsonb_build_object(
-      'allowed', false, 'limit', v_limit, 'used', v_used,
-      'resets_at', v_start + interval '1 day');
+  if v_bucket = 'scan' then
+    if p_ref_id is not null then
+      select count(*), coalesce(bool_or(created_at >= v_start), false)
+        into v_attempts, v_counted
+        from public.ai_usage
+        where user_id = v_uid and kind = 'scan' and ref_id = p_ref_id;
+      if v_attempts >= 3 then
+        return jsonb_build_object('allowed', false, 'reason', 'too_many_attempts', 'limit', 3, 'used', v_attempts);
+      end if;
+    end if;
+    select count(distinct coalesce(ref_id::text, id::text)) into v_used
+      from public.ai_usage
+      where user_id = v_uid and kind = 'scan' and created_at >= v_start;
+    if not v_counted and v_used >= v_limit then
+      return jsonb_build_object('allowed', false, 'reason', 'daily_limit', 'limit', v_limit, 'used', v_used,
+                                'resets_at', v_start + interval '1 day');
+    end if;
+    if not v_counted then
+      v_used := v_used + 1;
+    end if;
+  else
+    select count(*) into v_used
+      from public.ai_usage
+      where user_id = v_uid and kind in ('command', 'recipe') and created_at >= v_start;
+    if v_used >= v_limit then
+      return jsonb_build_object('allowed', false, 'reason', 'daily_limit', 'limit', v_limit, 'used', v_used,
+                                'resets_at', v_start + interval '1 day');
+    end if;
+    v_used := v_used + 1;
   end if;
 
   insert into public.ai_usage (user_id, kind, ref_id) values (v_uid, p_kind, p_ref_id);
 
-  return jsonb_build_object(
-    'allowed', true, 'limit', v_limit, 'used', v_used + 1, 'remaining', v_limit - v_used - 1);
+  return jsonb_build_object('allowed', true, 'limit', v_limit, 'used', v_used, 'remaining', greatest(v_limit - v_used, 0));
 end;
 $$;
 

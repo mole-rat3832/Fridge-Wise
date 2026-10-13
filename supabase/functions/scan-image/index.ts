@@ -23,8 +23,6 @@ import {
 import { Product, productJsonSchema, Receipt, receiptJsonSchema } from '../_shared/schemas.ts';
 import { claimQuota, getProfile, getUserContext } from '../_shared/supabase.ts';
 
-const MAX_ATTEMPTS = 3;
-
 const RECEIPT_PROMPT = `You read photos of grocery receipts for FridgeWise, an app that tracks food at home.
 Extract the store name, the purchase date and every purchased line.
 For each line give:
@@ -72,11 +70,8 @@ serve(async (req) => {
     throw new HttpError(409, 'This scan is already finished.', 'scan_closed');
   }
   if (!scan.image_path) throw new HttpError(409, 'This scan has no image.', 'no_image');
-  if (scan.attempts >= MAX_ATTEMPTS) {
-    throw new HttpError(429, 'This photo could not be read after several tries. Please add the items by hand.', 'too_many_attempts');
-  }
-
-  // Quota: re-processing the same scan does not count twice.
+  // Quota (enforced from ai_usage, which users cannot edit): a scan counts once per day,
+  // and each scan can be processed at most 3 times.
   await claimQuota(supabase, 'scan', scanId);
 
   // Mark processing. The status filter guards against two concurrent runs.

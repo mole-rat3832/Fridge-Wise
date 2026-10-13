@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(55);
+select plan(61);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures: two users (profiles are created by the auth trigger)
@@ -224,6 +224,15 @@ insert into ai_usage (user_id, kind) select '11111111-1111-4111-8111-11111111111
 select pg_temp.login('11111111-1111-4111-8111-111111111111');
 select is((select (claim_ai_quota('scan') ->> 'allowed')::boolean), false, 'the 41st scan of the day is refused');
 select is((select (claim_ai_quota('command') ->> 'allowed')::boolean), true, 'commands have their own quota');
+select is((select claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000001') ->> 'reason'), 'daily_limit', 'a new scan is refused at the daily limit');
+select pg_temp.logout();
+delete from ai_usage where user_id = '11111111-1111-4111-8111-111111111111';
+select pg_temp.login('11111111-1111-4111-8111-111111111111');
+select is((select (claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'used')::int), 1, 'first attempt counts one scan');
+select is((select (claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'used')::int), 1, 'retrying the same scan does not count again');
+select is((select (claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'allowed')::boolean), true, 'third attempt is allowed');
+select is((select claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'reason'), 'too_many_attempts', 'a fourth attempt on one scan is refused');
+select throws_ok($$ update ai_usage set created_at = now() - interval '2 days' $$, '42501', null, 'users cannot rewrite quota rows');
 select throws_ok($$ delete from ai_usage $$, '42501', null, 'users cannot delete quota rows');
 
 select is((select (load_demo_data() ->> 'active_items')::int), 23, 'demo data loads 23 active items');

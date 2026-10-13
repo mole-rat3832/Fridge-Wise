@@ -69,7 +69,10 @@ export async function getProfile(supabase: SupabaseClient, userId: string): Prom
 export async function claimQuota(supabase: SupabaseClient, kind: 'scan' | 'command' | 'recipe', refId?: string): Promise<void> {
   const { data, error } = await supabase.rpc('claim_ai_quota', { p_kind: kind, p_ref_id: refId ?? null });
   if (error) throw new Error(`quota check failed: ${error.message}`);
-  const res = data as { allowed: boolean; limit: number; resets_at?: string };
+  const res = data as { allowed: boolean; limit: number; reason?: string; resets_at?: string };
+  if (!res.allowed && res.reason === 'too_many_attempts') {
+    throw new HttpError(429, 'This photo could not be read after several tries. Please add the items by hand.', 'too_many_attempts');
+  }
   if (!res.allowed) {
     const what = kind === 'scan' ? 'scans' : 'AI requests';
     throw new HttpError(
