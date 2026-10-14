@@ -1,4 +1,4 @@
-import { Info } from 'lucide-react';
+import { CirclePlus, Info } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { emptyForm, ItemForm, formToColumns, type ItemFormValues } from '../components/ItemForm';
@@ -123,7 +123,7 @@ export function AddItem() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Add an item" subtitle={<>Prefer a photo? <Link to="/scan" className="font-semibold text-fg underline underline-offset-2">Scan it instead</Link>.</>} />
+      <PageHeader icon={<CirclePlus size={24} />} title="Add an item" subtitle={<>Prefer a photo? <Link to="/scan" className="font-semibold text-fg underline underline-offset-2">Scan it instead</Link>.</>} />
       <form onSubmit={(e) => void save(e)} className="card space-y-5 p-4 sm:p-6">
         <ItemForm values={values} onChange={patch} expirationHint={hint} idPrefix="add" />
         {error && <ErrorNote>{error}</ErrorNote>}

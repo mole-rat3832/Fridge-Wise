@@ -119,7 +119,7 @@ export function CommandBar({ locale }: { locale: string }) {
   return (
     <section aria-labelledby="command-title" className={`card p-4 sm:p-5 ${busy ? 'ai-glow' : ''}`}>
       <h2 id="command-title" className="mb-2 flex items-center gap-2 font-bold">
-        <Sparkles size={18} aria-hidden /> Tell FridgeWise what happened
+        <Sparkles size={18} aria-hidden data-anim="twinkle-loop" /> Tell FridgeWise what happened
       </h2>
       {question && (
         <div className="mb-3 flex items-start gap-2 rounded-xl bg-tint px-3 py-2">
@@ -157,11 +157,11 @@ export function CommandBar({ locale }: { locale: string }) {
             aria-pressed={listening}
             disabled={!online}
           >
-            {listening ? <MicOff size={20} /> : <Mic size={20} />}
+            {listening ? <MicOff size={20} data-anim="pulse-loop" /> : <Mic size={20} data-anim="pop" />}
           </button>
         )}
         <button type="submit" className="btn btn-primary btn-icon" disabled={busy || !text.trim() || !online} aria-label="Send">
-          {busy ? <Spinner label="Thinking" /> : <Send size={20} />}
+          {busy ? <Spinner label="Thinking" /> : <Send size={20} data-anim="fly" />}
         </button>
       </form>
       {!online && <p className="mt-2 text-sm text-fg-2">The AI command bar needs an internet connection.</p>}

@@ -1,4 +1,4 @@
-import { Bell, Database, Download, Globe, LogOut, Moon, Sparkles, Trash, UserRound } from 'lucide-react';
+import { Accessibility, Bell, Check, Settings as SettingsIcon, Contrast, Database, Download, Globe, LogOut, Monitor, Moon, Palette, Sparkles, Square, SquareRoundCorner, Sun, Trash, Type, UserRound } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ErrorNote, PageHeader, Sheet, Spinner, Toggle } from '../components/ui';
@@ -9,7 +9,7 @@ import { toCsv, downloadFile } from '../lib/csv';
 import { browserTimeZone, supportedTimeZones } from '../lib/dates';
 import { currentSubscription, disablePush, enablePush, isIOS, isStandalone, pushSupport, testNotification } from '../lib/push';
 import { supabase } from '../lib/supabase';
-import { getThemePref, setThemePref, type ThemePref } from '../lib/theme';
+import { ACCENTS, getAppearance, setAppearance, type Appearance } from '../lib/theme';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
 import { useToast } from '../state/toast';
@@ -25,6 +25,17 @@ const LOCALES = [
   ['ko-KR', '한국어'],
   ['ja-JP', '日本語'],
 ] as const;
+
+function ChoiceRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="label">{label}</p>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={label}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
@@ -46,7 +57,9 @@ export function Settings() {
   const online = useOnline();
   const [name, setName] = useState(profile?.display_name ?? '');
   const [household, setHousehold] = useState(String(profile?.household_size ?? 1));
-  const [theme, setTheme] = useState<ThemePref>(getThemePref());
+  const [look, setLook] = useState<Appearance>(getAppearance());
+  const updateLook = (patch: Partial<Appearance>) => setLook(setAppearance(patch));
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -170,7 +183,7 @@ export function Settings() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" icon={<SettingsIcon size={24} />} />
 
       <Section icon={<UserRound size={20} aria-hidden />} title="Profile">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -203,7 +216,7 @@ export function Settings() {
         </div>
       </Section>
 
-      <Section icon={<Bell size={20} aria-hidden />} title="Reminders">
+      <Section icon={<Bell size={20} aria-hidden data-anim="ring" />} title="Reminders">
         <div>
           <label className="label" htmlFor="s-days">
             Remind me before food expires
@@ -278,24 +291,105 @@ export function Settings() {
         </div>
       </Section>
 
-      <Section icon={<Moon size={20} aria-hidden />} title="Appearance">
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Theme">
-          {(['system', 'light', 'dark'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="radio"
-              aria-checked={theme === t}
-              aria-pressed={theme === t}
-              className="chip"
-              onClick={() => {
-                setTheme(t);
-                setThemePref(t);
-              }}
-            >
-              {t === 'system' ? 'Match device' : t === 'light' ? 'Light' : 'Dark'}
+      <Section icon={<Palette size={20} aria-hidden data-anim="wiggle" />} title="Appearance">
+        <ChoiceRow label="Theme">
+          {(
+            [
+              ['system', 'Match device', Monitor, 'pop'],
+              ['light', 'Light', Sun, 'spin'],
+              ['dark', 'Dark', Moon, 'wiggle'],
+            ] as const
+          ).map(([t, label, Icon, anim]) => (
+            <button key={t} type="button" role="radio" aria-checked={look.theme === t} aria-pressed={look.theme === t} className="chip" onClick={() => updateLook({ theme: t })}>
+              <Icon size={16} aria-hidden data-anim={anim} /> {label}
             </button>
           ))}
+        </ChoiceRow>
+
+        <ChoiceRow label="Accent color">
+          {ACCENTS.map((a) => {
+            const selected = look.accent === a.id;
+            const onDark = a.id === 'steel' || a.id === 'slate';
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={a.label}
+                title={a.label}
+                onClick={() => updateLook({ accent: a.id })}
+                className={`relative flex h-11 w-11 items-center justify-center rounded-full border transition-transform hover:scale-110 active:scale-95 ${
+                  selected ? 'border-fg ring-2 ring-fg ring-offset-2 ring-offset-surface' : 'border-line'
+                }`}
+                style={{ backgroundColor: isDark ? a.dark : a.light }}
+              >
+                {selected && <Check size={18} strokeWidth={3} className={`animate-pop ${onDark ? 'text-white' : 'text-ink'}`} aria-hidden />}
+              </button>
+            );
+          })}
+        </ChoiceRow>
+
+        <ChoiceRow label="Text size">
+          {(
+            [
+              ['default', 'Default', 14],
+              ['large', 'Large', 17],
+              ['xl', 'Extra large', 20],
+            ] as const
+          ).map(([t, label, size]) => (
+            <button key={t} type="button" role="radio" aria-checked={look.text === t} aria-pressed={look.text === t} className="chip" onClick={() => updateLook({ text: t })}>
+              <Type size={size} aria-hidden data-anim="bounce" /> {label}
+            </button>
+          ))}
+        </ChoiceRow>
+
+        <ChoiceRow label="Corners">
+          {(
+            [
+              ['rounded', 'Rounded', SquareRoundCorner],
+              ['square', 'Square', Square],
+            ] as const
+          ).map(([t, label, Icon]) => (
+            <button key={t} type="button" role="radio" aria-checked={look.corners === t} aria-pressed={look.corners === t} className="chip" onClick={() => updateLook({ corners: t })}>
+              <Icon size={16} aria-hidden data-anim="pop" /> {label}
+            </button>
+          ))}
+        </ChoiceRow>
+
+        <Toggle
+          checked={look.contrast === 'high'}
+          onChange={(on) => updateLook({ contrast: on ? 'high' : 'standard' })}
+          label="High contrast"
+          description={
+            <span className="inline-flex items-center gap-1">
+              <Contrast size={14} aria-hidden /> Darker text and stronger borders.
+            </span>
+          }
+        />
+        <Toggle
+          checked={look.motion === 'reduce'}
+          onChange={(on) => updateLook({ motion: on ? 'reduce' : 'system' })}
+          label="Reduce motion"
+          description={
+            <span className="inline-flex items-center gap-1">
+              <Accessibility size={14} aria-hidden /> Turns off animations. Your device's reduce-motion setting is always respected.
+            </span>
+          }
+        />
+
+        <div className="rounded-2xl border border-dashed border-line p-4" aria-label="Preview">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-fg-2">Preview</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="btn btn-primary pointer-events-none">
+              <Sparkles size={18} aria-hidden data-anim="pop" /> Generate ideas
+            </span>
+            <span className="chip" aria-pressed="true">
+              Fridge
+            </span>
+            <span className="badge badge-yellow">Use soon</span>
+            <span className="badge badge-green">Fresh</span>
+          </div>
         </div>
       </Section>
 
@@ -307,10 +401,10 @@ export function Settings() {
         )}
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-secondary" onClick={() => void exportItems()} disabled={busy !== null || !online}>
-            {busy === 'export-items' ? <Spinner /> : <Download size={18} aria-hidden />} Export items (CSV)
+            {busy === 'export-items' ? <Spinner /> : <Download size={18} aria-hidden data-anim="drop" />} Export items (CSV)
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => void exportHistory()} disabled={busy !== null || !online}>
-            {busy === 'export-history' ? <Spinner /> : <Download size={18} aria-hidden />} Export history (CSV)
+            {busy === 'export-history' ? <Spinner /> : <Download size={18} aria-hidden data-anim="drop" />} Export history (CSV)
           </button>
         </div>
         {isDemoAccount(user) && (
@@ -319,7 +413,7 @@ export function Settings() {
             <p className="mt-1 text-sm text-fg-2">This is a demo account. Reload about 20 realistic items with mixed expiration dates, plus a few weeks of history for Stats.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" className="btn btn-primary" onClick={() => void demo(true)} disabled={busy !== null || !online}>
-                {busy === 'demo' ? <Spinner /> : <Sparkles size={18} aria-hidden />} Load demo data
+                {busy === 'demo' ? <Spinner /> : <Sparkles size={18} aria-hidden data-anim="pop" />} Load demo data
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => void demo(false)} disabled={busy !== null || !online}>
                 Remove demo data
@@ -333,10 +427,10 @@ export function Settings() {
         <p className="text-sm text-fg-2">Signed in as {user?.email}</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-secondary" onClick={() => void signOut()}>
-            <LogOut size={18} aria-hidden /> Sign out
+            <LogOut size={18} aria-hidden data-anim="nudge" /> Sign out
           </button>
           <button type="button" className="btn btn-danger" onClick={() => setDeleteOpen(true)} disabled={!online}>
-            <Trash size={18} aria-hidden /> Delete account
+            <Trash size={18} aria-hidden data-anim="wiggle" /> Delete account
           </button>
         </div>
       </Section>

@@ -172,7 +172,7 @@ export function RecipeChat({
         </h2>
         {messages.length > 0 && (
           <button type="button" className="btn btn-ghost btn-sm shrink-0 whitespace-nowrap" onClick={reset} disabled={busy || generating}>
-            <RotateCcw size={16} aria-hidden /> Start over
+            <RotateCcw size={16} aria-hidden data-anim="spin" /> Start over
           </button>
         )}
       </div>
@@ -227,7 +227,7 @@ export function RecipeChat({
           disabled={!online || generating}
         />
         <button type="submit" className="btn btn-secondary btn-icon" disabled={busy || !text.trim() || !online || generating} aria-label="Send">
-          {busy ? <Spinner label="Sending" /> : <Send size={20} />}
+          {busy ? <Spinner label="Sending" /> : <Send size={20} data-anim="fly" />}
         </button>
       </form>
       {error && (
@@ -243,7 +243,7 @@ export function RecipeChat({
           onClick={() => onGenerate(userTurns ? all.map(({ role, text: t }) => ({ role, text: t })) : [], brief)}
           disabled={generating || busy || !online || items.length === 0}
         >
-          {generating ? <Spinner label="Cooking" /> : <Sparkles size={18} aria-hidden />} {userTurns ? 'Generate ideas from this chat' : 'Generate 3 ideas'}
+          {generating ? <Spinner label="Cooking" /> : <Sparkles size={18} aria-hidden data-anim={ready ? 'twinkle-loop' : 'pop'} />} {userTurns ? 'Generate ideas from this chat' : 'Generate 3 ideas'}
         </button>
         <p className="text-xs text-fg-2">
           {ready ? 'The chef has what it needs. ' : ''}Each message and each set of ideas uses 1 of your 60 daily AI requests.

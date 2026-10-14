@@ -1,11 +1,14 @@
 // Stats: food and money saved vs. wasted, weekly and all-time (from the user_stats view).
 // Charts: one y-axis each, legend + tooltip + table view, "tossed" carries a hatch texture so it
 // never relies on color alone (the brand palette has only one chromatic hue for two series).
-import { ChartColumn, Sparkles, Table } from 'lucide-react';
+import { ChartColumn, CircleCheck, Gauge, House, PiggyBank, Sparkles, Table, Trash, Wallet } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { EmptyState, ErrorNote, PageHeader, Spinner } from '../components/ui';
 import { errorMessage, loadDemoData } from '../lib/api';
+import { isDemoAccount } from '../lib/demo';
 import { addDays, diffDays, formatDate } from '../lib/dates';
 import { formatMoney } from '../lib/format';
 import { supabase } from '../lib/supabase';
@@ -37,10 +40,15 @@ function mondayOf(iso: string): string {
   return addDays(iso, -((day + 6) % 7));
 }
 
-function StatTile({ label, value, hint, hero }: { label: string; value: string; hint?: string; hero?: boolean }) {
+function StatTile({ label, value, hint, hero, icon: Icon, delay = 0 }: { label: string; value: string; hint?: string; hero?: boolean; icon: LucideIcon; delay?: number }) {
   return (
-    <div className="card p-4">
-      <p className="text-sm font-semibold text-fg-2">{label}</p>
+    <div className="card p-4 animate-rise" style={{ animationDelay: `${delay}ms` }}>
+      <p className="flex items-center gap-2 text-sm font-semibold text-fg-2">
+        <span className={`flex items-center justify-center rounded-full ${hero ? 'h-8 w-8 bg-lime text-ink' : 'h-7 w-7 bg-tint text-fg'}`} aria-hidden>
+          <Icon size={hero ? 18 : 15} className="animate-pop" style={{ animationDelay: `${delay + 200}ms` }} />
+        </span>
+        {label}
+      </p>
       <p className={`mt-1 font-bold tracking-tight ${hero ? 'text-4xl sm:text-5xl' : 'text-2xl'}`}>{value}</p>
       {hint && <p className="mt-1 text-sm text-fg-2">{hint}</p>}
     </div>
@@ -164,7 +172,7 @@ function WeeklyChart({
 }
 
 export function Stats() {
-  const { today, locale } = useAuth();
+  const { today, locale, user } = useAuth();
   const { refresh } = useItems();
   const [rows, setRows] = useState<UserStatsRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +236,7 @@ export function Stats() {
           </pattern>
         </defs>
       </svg>
-      <PageHeader title="Stats" subtitle="What you've used and what went to waste." />
+      <PageHeader title="Stats" subtitle="What you've used and what went to waste." icon={<ChartColumn size={24} />} />
       {error && <ErrorNote>{error}</ErrorNote>}
       {rows === null ? (
         <div className="flex justify-center py-16">
@@ -239,9 +247,15 @@ export function Stats() {
           icon={<ChartColumn size={40} />}
           title="No stats yet"
           actions={
-            <button type="button" className="btn btn-secondary" onClick={() => void demo()} disabled={demoBusy}>
-              {demoBusy ? <Spinner label="Loading" /> : <Sparkles size={18} aria-hidden />} Load demo data
-            </button>
+            isDemoAccount(user) ? (
+              <button type="button" className="btn btn-secondary" onClick={() => void demo()} disabled={demoBusy}>
+                {demoBusy ? <Spinner label="Loading" /> : <Sparkles size={18} aria-hidden data-anim="pop" />} Load demo data
+              </button>
+            ) : (
+              <Link to="/" className="btn btn-secondary">
+                <House size={18} aria-hidden data-anim="bounce" /> Go to your food
+              </Link>
+            )
           }
         >
           Mark items as used or tossed and your savings show up here.
@@ -252,19 +266,22 @@ export function Stats() {
             <div className="col-span-2">
               <StatTile
                 hero
+                icon={PiggyBank}
                 label="Money saved"
                 value={formatMoney(Number(allTime?.money_saved_cents ?? 0), locale)}
                 hint={`Price of food you used${trackingWeeks ? ` over ${trackingWeeks} week${trackingWeeks === 1 ? '' : 's'}` : ''}`}
               />
             </div>
-            <StatTile label="Money wasted" value={formatMoney(Number(allTime?.money_wasted_cents ?? 0), locale)} hint="Price of food you tossed" />
+            <StatTile icon={Wallet} delay={80} label="Money wasted" value={formatMoney(Number(allTime?.money_wasted_cents ?? 0), locale)} hint="Price of food you tossed" />
             <StatTile
+              icon={Gauge}
+              delay={160}
               label="Waste rate"
               value={`${Math.round((tossed / total) * 100)}%`}
               hint={`${tossed} of ${total} items tossed`}
             />
-            <StatTile label="Items used" value={String(used)} hint={thisWeek ? `${thisWeek.used} this week, ${lastWeek?.used ?? 0} last week` : undefined} />
-            <StatTile label="Items tossed" value={String(tossed)} hint={thisWeek ? `${thisWeek.tossed} this week, ${lastWeek?.tossed ?? 0} last week` : undefined} />
+            <StatTile icon={CircleCheck} delay={240} label="Items used" value={String(used)} hint={thisWeek ? `${thisWeek.used} this week, ${lastWeek?.used ?? 0} last week` : undefined} />
+            <StatTile icon={Trash} delay={320} label="Items tossed" value={String(tossed)} hint={thisWeek ? `${thisWeek.tossed} this week, ${lastWeek?.tossed ?? 0} last week` : undefined} />
           </div>
           <div className="grid gap-5 xl:grid-cols-2">
             <WeeklyChart title="Items per week" data={weeks} keys={[{ key: 'used', label: 'Used' }, { key: 'tossed', label: 'Tossed' }]} money={false} locale={locale} />

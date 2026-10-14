@@ -1,4 +1,4 @@
-import { Bell, Check, Sparkles, Users } from 'lucide-react';
+import { Bell, BellRing, Check, Sparkles, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/AppShell';
@@ -73,7 +73,7 @@ export function Onboarding() {
       ),
     },
     {
-      icon: <Bell size={28} aria-hidden />,
+      icon: <Bell size={28} aria-hidden data-anim="ring" />,
       title: 'When should we remind you?',
       body: (
         <div className="space-y-2" role="radiogroup" aria-label="Reminder timing">
@@ -87,7 +87,7 @@ export function Onboarding() {
               className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left font-semibold ${days === d ? 'border-fg bg-tint' : 'border-line'}`}
             >
               {d === 0 ? 'On the day it expires' : `${d} day${d === 1 ? '' : 's'} before`}
-              {days === d && <Check size={18} aria-hidden />}
+              {days === d && <Check size={18} aria-hidden data-anim="pop" />}
             </button>
           ))}
           <p className="text-sm text-fg-2">Times use your timezone: {browserTimeZone().replace(/_/g, ' ')}.</p>
@@ -95,7 +95,7 @@ export function Onboarding() {
       ),
     },
     {
-      icon: <Bell size={28} aria-hidden />,
+      icon: <BellRing size={28} aria-hidden data-anim="ring-loop" />,
       title: 'Turn on notifications',
       body: (
         <div className="space-y-3">
@@ -107,7 +107,7 @@ export function Onboarding() {
             </p>
           ) : support === 'supported' ? (
             <button type="button" className="btn btn-primary" onClick={() => void turnOnPush()} disabled={pushState !== 'idle'}>
-              {pushState === 'busy' ? <Spinner /> : pushState === 'on' ? <Check size={18} aria-hidden /> : <Bell size={18} aria-hidden />}
+              {pushState === 'busy' ? <Spinner /> : pushState === 'on' ? <Check size={18} aria-hidden data-anim="pop" /> : <Bell size={18} aria-hidden data-anim="ring" />}
               {pushState === 'on' ? 'Notifications on' : 'Turn on notifications'}
             </button>
           ) : (
@@ -118,7 +118,7 @@ export function Onboarding() {
       ),
     },
     {
-      icon: <Sparkles size={28} aria-hidden />,
+      icon: <Sparkles size={28} aria-hidden data-anim="pop" />,
       title: 'Ready to go',
       body: demoAccount ? (
         <div className="space-y-3">
@@ -147,7 +147,9 @@ export function Onboarding() {
         </div>
         <div className="card p-6">
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-fg-2">{current.icon}</span>
+            <span key={step} className="flex h-12 w-12 items-center justify-center rounded-2xl bg-lime text-ink animate-pop">
+              {current.icon}
+            </span>
             <span className="text-sm font-semibold text-fg-2">
               Step {step + 1} of {steps.length}
             </span>

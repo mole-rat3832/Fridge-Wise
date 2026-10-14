@@ -1,6 +1,6 @@
 // Review screen: every staged scan_item is an editable row. Nothing reaches food_items until
 // Confirm, which calls the confirm_scan RPC (one transaction: insert items, log, link, mark confirmed).
-import { ArrowLeft, Info, RefreshCw, Trash } from 'lucide-react';
+import { ArrowLeft, Info, ListChecks, RefreshCw, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { EmptyState, ErrorNote, Field, PageHeader, Spinner } from '../components/ui';
@@ -207,7 +207,7 @@ export function ScanReview() {
 
   const back = (
     <Link to="/scan" className="inline-flex items-center gap-1 text-sm font-semibold text-fg-2 hover:text-fg">
-      <ArrowLeft size={16} aria-hidden /> Scans
+      <ArrowLeft size={16} aria-hidden data-anim="bounce" /> Scans
     </Link>
   );
 
@@ -242,7 +242,7 @@ export function ScanReview() {
             <>
               {scan.attempts < 3 && (
                 <button type="button" className="btn btn-primary" onClick={() => void retry()} disabled={retrying || !online}>
-                  {retrying ? <Spinner label="Retrying" /> : <RefreshCw size={18} aria-hidden />} Try again
+                  {retrying ? <Spinner label="Retrying" /> : <RefreshCw size={18} aria-hidden data-anim="spin" />} Try again
                 </button>
               )}
               <Link to="/add" className="btn btn-secondary">
@@ -265,6 +265,7 @@ export function ScanReview() {
     <div className="mx-auto max-w-4xl space-y-4 pb-24 lg:pb-0">
       {back}
       <PageHeader
+        icon={<ListChecks size={24} />}
         title="Review your scan"
         subtitle={
           <>
@@ -389,7 +390,7 @@ export function ScanReview() {
       <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur lg:static lg:rounded-2xl lg:border lg:px-5">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <button type="button" className="btn btn-ghost" onClick={() => void discard()} disabled={saving}>
-            <Trash size={18} aria-hidden /> Discard
+            <Trash size={18} aria-hidden data-anim="wiggle" /> Discard
           </button>
           <button type="button" className="btn btn-primary min-w-40" onClick={() => void confirm()} disabled={saving || included === 0 || !online}>
             {saving ? <Spinner label="Adding" /> : `Add ${included} item${included === 1 ? '' : 's'}`}

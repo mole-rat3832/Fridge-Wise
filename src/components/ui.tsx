@@ -1,5 +1,6 @@
-import { LoaderCircle, TriangleAlert, X } from 'lucide-react';
+import { AlarmClock, Hourglass, Leaf, LoaderCircle, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { Freshness } from '../types/app';
 
 export function Spinner({ label = 'Loading', size = 20 }: { label?: string; size?: number }) {
@@ -11,12 +12,19 @@ export function Spinner({ label = 'Loading', size = 20 }: { label?: string; size
   );
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions, icon }: { title: string; subtitle?: ReactNode; actions?: ReactNode; icon?: ReactNode }) {
   return (
     <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-fg-2">{subtitle}</p>}
+      <div className="flex min-w-0 items-start gap-3">
+        {icon && (
+          <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-lime text-ink shadow-sm animate-pop sm:h-12 sm:w-12" aria-hidden>
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+          {subtitle && <p className="mt-1 text-fg-2">{subtitle}</p>}
+        </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>
@@ -26,7 +34,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 export function EmptyState({ icon, title, children, actions }: { icon?: ReactNode; title: string; children?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="card flex flex-col items-center px-6 py-10 text-center">
-      {icon && <div className="mb-3 text-fg-2">{icon}</div>}
+      {icon && <div className="mb-3 text-fg-2 animate-float-once">{icon}</div>}
       <h2 className="text-lg font-bold">{title}</h2>
       {children && <div className="mt-1 max-w-md text-fg-2">{children}</div>}
       {actions && <div className="mt-5 flex flex-wrap justify-center gap-2">{actions}</div>}
@@ -37,7 +45,7 @@ export function EmptyState({ icon, title, children, actions }: { icon?: ReactNod
 export function ErrorNote({ children }: { children: ReactNode }) {
   return (
     <div role="alert" className="flex items-start gap-2 rounded-xl border border-expired/60 bg-expired/10 px-3 py-2 text-sm text-danger">
-      <TriangleAlert size={18} className="mt-0.5 shrink-0" aria-hidden />
+      <TriangleAlert size={18} className="mt-0.5 shrink-0" aria-hidden data-anim="wiggle-once" />
       <div>{children}</div>
     </div>
   );
@@ -45,8 +53,16 @@ export function ErrorNote({ children }: { children: ReactNode }) {
 
 export const FRESHNESS_LABEL: Record<Freshness, string> = { red: 'Use today', yellow: 'Use soon', green: 'Fresh' };
 
+export const FRESHNESS_ICON: Record<Freshness, typeof Leaf> = { red: AlarmClock, yellow: Hourglass, green: Leaf };
+
 export function FreshnessBadge({ status, children }: { status: Freshness; children?: ReactNode }) {
-  return <span className={`badge badge-${status}`}>{children ?? FRESHNESS_LABEL[status]}</span>;
+  const Icon = FRESHNESS_ICON[status];
+  return (
+    <span className={`badge badge-${status}`}>
+      <Icon size={12} strokeWidth={2.5} aria-hidden />
+      {children ?? FRESHNESS_LABEL[status]}
+    </span>
+  );
 }
 
 /** Labelled form control with optional hint and a "check this" highlight for low AI confidence. */
@@ -124,7 +140,10 @@ export function Toggle({
   );
 }
 
-/** Bottom sheet on phones, centered dialog on larger screens. */
+/**
+ * Bottom sheet on phones, centered dialog on larger screens (`center` keeps it centered everywhere).
+ * Rendered into <body>, so animated or transformed parents can never trap or clip it.
+ */
 export function Sheet({
   open,
   onClose,
@@ -132,6 +151,7 @@ export function Sheet({
   children,
   footer,
   wide,
+  center,
 }: {
   open: boolean;
   onClose: () => void;
@@ -139,6 +159,7 @@ export function Sheet({
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  center?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -175,27 +196,32 @@ export function Sheet({
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-6">
+  return createPortal(
+    <div className={`fixed inset-0 z-40 flex justify-center ${center ? 'items-center p-4 sm:p-6' : 'items-end sm:items-center sm:p-6'}`}>
       <div className="absolute inset-0 bg-ink/50 backdrop-blur-[2px] animate-fade-in" onClick={onClose} aria-hidden />
       <div
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative flex max-h-[92dvh] w-full flex-col rounded-t-3xl border border-line bg-surface shadow-2xl animate-sheet-in sm:rounded-3xl ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}
+        className={`relative flex w-full flex-col border border-line bg-surface shadow-2xl ${
+          center ? 'max-h-[85dvh] max-w-lg rounded-3xl animate-pop' : 'max-h-[92dvh] rounded-t-3xl animate-sheet-in sm:rounded-3xl'
+        } ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
           <h2 id={titleId} className="text-lg font-bold">
             {title}
           </h2>
           <button type="button" className="btn btn-ghost btn-icon -mr-2" onClick={onClose} aria-label="Close">
-            <X size={20} />
+            <X size={20} data-anim="turn" />
           </button>
         </div>
         <div className="overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</div>}
+        {footer && (
+          <div className={`flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4 ${center ? '' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'}`}>{footer}</div>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

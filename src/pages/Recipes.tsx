@@ -158,7 +158,7 @@ export function Recipes() {
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-bold leading-snug">{r.title}</h3>
           <button type="button" className="btn btn-ghost btn-icon -mr-2 -mt-1" onClick={() => void toggleSave(r)} aria-pressed={r.saved} aria-label={r.saved ? 'Remove from saved' : 'Save recipe'}>
-            {r.saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
+            {r.saved ? <BookmarkCheck size={20} className="animate-pop" /> : <Bookmark size={20} data-anim="pop" />}
           </button>
         </div>
         <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-fg-2">
@@ -196,7 +196,7 @@ export function Recipes() {
         </details>
         <div className="mt-auto pt-4">
           <button type="button" className="btn btn-primary w-full" onClick={() => openMade(r)} disabled={!online || r.uses_item_ids.every((id) => !byId.has(id))}>
-            <CookingPot size={18} aria-hidden /> I made this
+            <CookingPot size={18} aria-hidden data-anim="wiggle" /> I made this
           </button>
         </div>
       </article>
@@ -205,7 +205,7 @@ export function Recipes() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Recipes" subtitle="Ideas that use the food closest to expiring. Tell the chef what you feel like first, or just generate." />
+      <PageHeader title="Recipes" subtitle="Ideas that use the food closest to expiring. Tell the chef what you feel like first, or just generate." icon={<ChefHat size={24} />} />
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -260,6 +260,7 @@ export function Recipes() {
       )}
 
       <Sheet
+        center
         open={made !== null}
         onClose={() => setMade(null)}
         title={made ? `You made ${made.title}` : ''}
