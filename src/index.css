@@ -1,0 +1,268 @@
+@import 'tailwindcss';
+
+/* Dark mode follows the system unless the user picks Light or Dark in Settings (class on <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Brand palette (only these, plus white / near-black for text):
+ *   slate #545454 · steel #69747C · leaf #6BAA75 · sprout #84DD63 · lime #CBFF4D
+ * Status: green #84DD63 (fresh), yellow #CBFF4D (use soon), muted red #B04A43 (use today / expired only).
+ * Contrast (WCAG AA) checked for every text/background pair in both themes.
+ */
+@theme {
+  --color-slate: #545454;
+  --color-steel: #69747c;
+  --color-leaf: #6baa75;
+  --color-sprout: #84dd63;
+  --color-lime: #cbff4d;
+  --color-ink: #141714;
+  --color-expired: #b04a43;
+
+  --color-bg: var(--fw-bg);
+  --color-surface: var(--fw-surface);
+  --color-tint: var(--fw-tint);
+  --color-line: var(--fw-line);
+  --color-fg: var(--fw-fg);
+  --color-fg-2: var(--fw-fg-2);
+  --color-fg-3: var(--fw-fg-3);
+  --color-accent: var(--fw-accent);
+  --color-on-accent: var(--fw-on-accent);
+  --color-danger: var(--fw-danger);
+  --color-focus: var(--fw-focus);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+  --radius-card: 1rem;
+}
+
+:root {
+  color-scheme: light;
+  --fw-bg: #ffffff;
+  --fw-surface: #ffffff;
+  --fw-tint: rgb(105 116 124 / 0.08);
+  --fw-line: rgb(105 116 124 / 0.3);
+  --fw-fg: #141714;
+  --fw-fg-2: #545454; /* 7.1:1 on white and on tint */
+  --fw-fg-3: #69747c; /* 4.8:1, only used on white */
+  --fw-accent: #6baa75; /* buttons: near-black text on it, 6.6:1 */
+  --fw-on-accent: #141714;
+  --fw-danger: #b04a43; /* 5.4:1 */
+  --fw-focus: #141714;
+}
+
+.dark {
+  color-scheme: dark;
+  --fw-bg: #0f110f;
+  --fw-surface: #181b19;
+  --fw-tint: rgb(105 116 124 / 0.18);
+  --fw-line: rgb(105 116 124 / 0.45);
+  --fw-fg: #ffffff;
+  --fw-fg-2: rgb(255 255 255 / 0.8);
+  --fw-fg-3: rgb(255 255 255 / 0.66);
+  --fw-accent: #84dd63; /* near-black text on it, 10.8:1 */
+  --fw-on-accent: #141714;
+  --fw-danger: #e58a80; /* lighter tone of the same muted red for text on dark, 6.8:1 */
+  --fw-focus: #cbff4d;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--fw-bg);
+    color: var(--fw-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+  /* iOS Safari zooms into inputs smaller than 16px. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  button,
+  a,
+  label {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--fw-focus);
+    outline-offset: 2px;
+  }
+  ::placeholder {
+    color: var(--fw-fg-3);
+    opacity: 1;
+  }
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+@utility mb-nav {
+  /* room for the phone bottom bar (64px) + home indicator */
+  margin-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+@layer components {
+  .card {
+    background-color: var(--fw-surface);
+    border: 1px solid var(--fw-line);
+    border-radius: var(--radius-card);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem; /* 44px touch target */
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    transition:
+      background-color 120ms,
+      opacity 120ms,
+      transform 80ms;
+    user-select: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background-color: var(--fw-accent);
+    color: var(--fw-on-accent);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+  .btn-secondary {
+    background-color: var(--fw-tint);
+    color: var(--fw-fg);
+    border: 1px solid var(--fw-line);
+  }
+  .btn-ghost {
+    color: var(--fw-fg);
+  }
+  .btn-ghost:hover:not(:disabled),
+  .btn-secondary:hover:not(:disabled) {
+    background-color: rgb(105 116 124 / 0.16);
+  }
+  .btn-danger {
+    background-color: var(--color-expired);
+    color: #ffffff;
+  }
+  .btn-sm {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  .btn-icon {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0.5rem;
+  }
+
+  .input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--fw-line);
+    background-color: var(--fw-surface);
+    color: var(--fw-fg);
+  }
+  .input:focus {
+    outline: 2px solid var(--fw-focus);
+    outline-offset: 0;
+    border-color: transparent;
+  }
+  .input-check {
+    border-color: var(--color-expired);
+    box-shadow: 0 0 0 1px var(--color-expired);
+  }
+  .label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--fw-fg-2);
+    margin-bottom: 0.3rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--fw-line);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--fw-fg-2);
+    background-color: var(--fw-surface);
+    white-space: nowrap;
+  }
+  .chip[aria-pressed='true'] {
+    background-color: var(--fw-fg);
+    color: var(--fw-bg);
+    border-color: var(--fw-fg);
+  }
+
+  /* Status badges: text always carries the meaning, color supports it. */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge-green {
+    background-color: var(--color-sprout);
+    color: var(--color-ink);
+  }
+  .badge-yellow {
+    background-color: var(--color-lime);
+    color: var(--color-ink);
+  }
+  .badge-red {
+    background-color: var(--color-expired);
+    color: #ffffff;
+  }
+  .badge-neutral {
+    background-color: var(--fw-tint);
+    color: var(--fw-fg-2);
+  }
+}
+
+/* Respect reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

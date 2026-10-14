@@ -1,0 +1,34 @@
+# Dependencies and builds
+node_modules
+dist
+dist-ssr
+dev-dist
+*.local
+*.tsbuildinfo
+coverage
+test-results
+playwright-report
+
+# Secrets: never commit these
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/functions/.env
+supabase/functions/.local-ca/
+supabase/.temp
+supabase/.branches
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sw?
+deno.lock

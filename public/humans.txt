@@ -1,0 +1,15 @@
+/* PROJECT */
+  Name: FridgeWise
+  About: Track the food you have at home and use it before it goes bad.
+  Made for: a school AI competition
+
+/* THANKS */
+  Shelf-life guidance: USDA FoodKeeper (foodsafety.gov)
+
+/* SITE */
+  Standards: HTML, CSS, TypeScript, Progressive Web App, Web Push
+  Components: React, Vite, Tailwind CSS, React Router, Recharts, lucide icons
+  Backend: Supabase (Postgres with Row Level Security, Auth, Storage, Edge Functions, pg_cron)
+  AI: Google Gemini (called only from Supabase Edge Functions)
+  Bot protection: Cloudflare Turnstile
+  Hosting: Netlify

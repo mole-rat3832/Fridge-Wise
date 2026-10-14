@@ -1,0 +1,92 @@
+# Netlify configuration for FridgeWise: static Vite build, SPA routing, security and cache headers.
+#
+# Everything in this file is public. The Supabase URL, the publishable key and the Turnstile
+# site key are compiled into the browser bundle anyway, and Row Level Security decides what the
+# publishable key can do. Real secrets (Gemini API key, Turnstile secret key, service role key)
+# live only in Supabase and are never needed here.
+#
+# robots.txt and sitemap.xml are generated during the build (see vite.config.ts) from Netlify's
+# URL / DEPLOY_PRIME_URL / CONTEXT variables; deploy previews and branch deploys get
+# "Disallow: /" so only the production site is indexed.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Supabase project FridgeWiseDatabase (Project Settings > API keys > publishable key).
+  VITE_SUPABASE_URL = "https://hnqyohodqzfrnzxscdjo.supabase.co"
+  VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_W9cYbV4BPCJsHzr-kii7mw_YzhWa7l3"
+  # Cloudflare Turnstile site key (the matching secret key goes in Supabase Auth, not here).
+  VITE_TURNSTILE_SITE_KEY = "0x4AAAAAAFWmYgBcvfFV_rzO"
+
+# `netlify dev` runs the Vite dev server behind Netlify's proxy (headers and redirects applied).
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  framework = "#custom"
+
+# Single-page app: any path that is not a real file serves index.html (React Router takes over).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ---------------------------------------------------------------------------
+# Security headers for every response.
+# The CSP allows only this site, Supabase (*.supabase.co, REST + Realtime + Storage images) and
+# Cloudflare Turnstile. With a Supabase custom domain, add it to connect-src and img-src.
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self'; manifest-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Strict-Transport-Security = "max-age=31536000"
+
+# ---------------------------------------------------------------------------
+# Caching
+# ---------------------------------------------------------------------------
+# Hashed build output never changes.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The service worker and manifest must always be revalidated so updates reach installed apps.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "no-cache"
+
+# Icons and images keep their names between releases: cache for a day, then revalidate.
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+[[headers]]
+  for = "/brand/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+[[headers]]
+  for = "/screenshots/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+[[headers]]
+  for = "/og-image.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
