@@ -1,12 +1,14 @@
 // Photo input for every platform:
-//  * phones: camera via <input type="file" accept="image/*" capture="environment"> (works in iOS Safari),
-//    plus a separate input for the photo library
+//  * phones: "Take a photo" and "Choose from library" are <label>s wrapping file inputs, so the
+//    browser opens the camera or library natively, with no scripted .click(). That is more reliable
+//    in iOS home-screen apps and in-app browsers (Instagram, Gmail, ...).
+//    "Use the in-app camera" (getUserMedia) is there for when the camera app won't open.
 //  * desktop: file picker, drag and drop, and a webcam capture (getUserMedia)
 import { Camera, ImagePlus, Upload, Video } from 'lucide-react';
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
 import { ErrorNote, Sheet } from './ui';
 
-function hasWebcamApi(): boolean {
+function hasCameraApi(): boolean {
   return typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
 }
 
@@ -14,13 +16,46 @@ function isTouchDevice(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 }
 
+function isIOS(): boolean {
+  return typeof navigator !== 'undefined' && (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+}
+
+/** A button-looking label around a hidden (but focusable) file input. */
+function FileButton({
+  children,
+  capture,
+  disabled,
+  className,
+  onFiles,
+}: {
+  children: ReactNode;
+  capture?: boolean;
+  disabled?: boolean;
+  className: string;
+  onFiles: (files: FileList | null) => void;
+}) {
+  function change(e: ChangeEvent<HTMLInputElement>) {
+    onFiles(e.target.files);
+    e.target.value = '';
+  }
+  return (
+    <label
+      className={`${className} cursor-pointer has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-focus ${
+        disabled ? 'pointer-events-none opacity-50' : ''
+      }`}
+    >
+      <input type="file" accept="image/*" capture={capture ? 'environment' : undefined} className="sr-only" disabled={disabled} onChange={change} />
+      {children}
+    </label>
+  );
+}
+
 export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void; disabled?: boolean }) {
-  const cameraInput = useRef<HTMLInputElement>(null);
-  const libraryInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const touch = isTouchDevice();
+  const camera = hasCameraApi();
 
   function take(files: FileList | null) {
     const file = files?.[0];
@@ -41,18 +76,25 @@ export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void
 
   return (
     <div className="space-y-3">
-      <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} onChange={(e) => { take(e.target.files); e.target.value = ''; }} aria-hidden />
-      <input ref={libraryInput} type="file" accept="image/*" className="sr-only" tabIndex={-1} onChange={(e) => { take(e.target.files); e.target.value = ''; }} aria-hidden />
-
       {touch ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button type="button" className="btn btn-primary min-h-16 text-base" disabled={disabled} onClick={() => cameraInput.current?.click()}>
-            <Camera size={22} aria-hidden data-anim="pop" /> Take a photo
-          </button>
-          <button type="button" className="btn btn-secondary min-h-16 text-base" disabled={disabled} onClick={() => libraryInput.current?.click()}>
-            <ImagePlus size={22} aria-hidden data-anim="pop" /> Choose from library
-          </button>
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FileButton capture disabled={disabled} className="btn btn-primary min-h-16 text-base" onFiles={take}>
+              <Camera size={22} aria-hidden data-anim="pop" /> Take a photo
+            </FileButton>
+            <FileButton disabled={disabled} className="btn btn-secondary min-h-16 text-base" onFiles={take}>
+              <ImagePlus size={22} aria-hidden data-anim="pop" /> Choose from library
+            </FileButton>
+          </div>
+          {camera && (
+            <p className="text-center text-sm text-fg-2">
+              Camera not opening?{' '}
+              <button type="button" className="font-semibold text-fg underline underline-offset-2" disabled={disabled} onClick={() => setWebcamOpen(true)}>
+                Use the in-app camera
+              </button>
+            </p>
+          )}
+        </>
       ) : (
         <div
           onDragOver={(e) => {
@@ -69,10 +111,10 @@ export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void
           <p className="font-semibold">Drag a photo here</p>
           <p className="text-sm text-fg-2">or</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" className="btn btn-primary" disabled={disabled} onClick={() => libraryInput.current?.click()}>
+            <FileButton disabled={disabled} className="btn btn-primary" onFiles={take}>
               <ImagePlus size={18} aria-hidden data-anim="pop" /> Choose a file
-            </button>
-            {hasWebcamApi() && (
+            </FileButton>
+            {camera && (
               <button type="button" className="btn btn-secondary" disabled={disabled} onClick={() => setWebcamOpen(true)}>
                 <Video size={18} aria-hidden data-anim="pop" /> Use webcam
               </button>
@@ -83,6 +125,7 @@ export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void
       {error && <ErrorNote>{error}</ErrorNote>}
       <WebcamCapture
         open={webcamOpen}
+        phone={touch}
         onClose={() => setWebcamOpen(false)}
         onCapture={(blob) => {
           setWebcamOpen(false);
@@ -93,7 +136,20 @@ export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void
   );
 }
 
-function WebcamCapture({ open, onClose, onCapture }: { open: boolean; onClose: () => void; onCapture: (b: Blob) => void }) {
+/** Why the camera couldn't start, and what to do about it on this device. */
+function cameraError(err: unknown): string {
+  const name = err instanceof Error ? err.name : '';
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return isIOS()
+      ? 'Camera access is blocked. On iPhone or iPad, open Settings, Safari (or the app you opened this link in), Camera, and choose Allow. Then try again.'
+      : 'Camera access is blocked. Tap the icon to the left of the web address, open Permissions, allow Camera, and try again. If that does not help, allow the camera for your browser in your phone settings (Apps, your browser, Permissions).';
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera was found on this device. Choose a photo from your library instead.';
+  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera is busy in another app. Close it and try again.';
+  return 'The camera could not start here. Choose a photo from your library instead, or open FridgeWise in Safari or Chrome.';
+}
+
+function WebcamCapture({ open, phone, onClose, onCapture }: { open: boolean; phone: boolean; onClose: () => void; onCapture: (b: Blob) => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +159,17 @@ function WebcamCapture({ open, onClose, onCapture }: { open: boolean; onClose: (
     let active: MediaStream | null = null;
     let cancelled = false;
     setError(null);
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+    const start = async () => {
+      const wanted = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: wanted, audio: false });
+      } catch (err) {
+        // Some devices reject the size hints; any camera is better than none.
+        if (err instanceof Error && err.name === 'OverconstrainedError') return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        throw err;
+      }
+    };
+    start()
       .then((s) => {
         if (cancelled) {
           s.getTracks().forEach((t) => t.stop());
@@ -114,8 +179,8 @@ function WebcamCapture({ open, onClose, onCapture }: { open: boolean; onClose: (
         setStream(s);
         if (video.current) video.current.srcObject = s;
       })
-      .catch((err: Error) => {
-        setError(err.name === 'NotAllowedError' ? 'Camera access was blocked. Allow it in your browser to use the webcam.' : 'No camera was found.');
+      .catch((err: unknown) => {
+        if (!cancelled) setError(cameraError(err));
       });
     return () => {
       cancelled = true;
@@ -123,6 +188,11 @@ function WebcamCapture({ open, onClose, onCapture }: { open: boolean; onClose: (
       setStream(null);
     };
   }, [open]);
+
+  // The <video> mounts after the stream arrives on some browsers; attach it then too.
+  useEffect(() => {
+    if (stream && video.current && video.current.srcObject !== stream) video.current.srcObject = stream;
+  }, [stream]);
 
   function capture() {
     const v = video.current;
@@ -154,7 +224,16 @@ function WebcamCapture({ open, onClose, onCapture }: { open: boolean; onClose: (
       {error ? (
         <ErrorNote>{error}</ErrorNote>
       ) : (
-        <video ref={video} autoPlay playsInline muted className="aspect-video w-full rounded-2xl bg-ink object-contain" />
+        <div className="relative">
+          <video
+            ref={video}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full rounded-2xl bg-ink object-contain ${phone ? 'aspect-[3/4] max-h-[60dvh]' : 'aspect-video'}`}
+          />
+          {!stream && <p className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white">Starting the camera…</p>}
+        </div>
       )}
     </Sheet>
   );
