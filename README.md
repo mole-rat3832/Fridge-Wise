@@ -33,7 +33,8 @@
 
 **Use it up**
 - **Plain-language updates**, typed or spoken: "I used half the milk", "moved the chicken to the freezer", "threw out the spinach". You see a preview, confirm, and can undo.
-- **Recipes** that use the food closest to expiring. *I made this* updates the ingredients (previewed, undoable).
+- **Plan with the chef**: chat with the AI before cooking (cravings, diet, allergies, time, how many people). It knows what's about to expire, keeps a one-line summary of what you want, and offers quick replies.
+- **Recipes** shaped by that chat and the food closest to expiring. *I made this* updates the ingredients (previewed, undoable).
 - **Do I have it?** A shopping check that also works offline from the last saved list.
 
 **See the difference**
@@ -43,6 +44,7 @@
 **Works everywhere**
 - A Progressive Web App for Android, iOS, Windows, macOS and Linux: bottom navigation on phones, a sidebar on desktop, light and dark themes.
 - The app shell loads offline and says clearly when you're offline.
+- **Motion with meaning**: a cooking pot your expiring food drops into while recipes generate, a scanning beam over receipt photos, a glowing ring while the AI thinks, typed-out chat replies, and staggered entrances. With *reduce motion* turned on in the system settings, all loops stop.
 - Settings: notifications, timezone, date format, theme, CSV export, delete account.
 - **Demo accounts** for judges and testers come with about 20 sample items and a few weeks of history. Regular accounts never see the demo controls.
 
@@ -98,7 +100,7 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 ```
 
 1. **Structured output only.** Each Gemini call sends a JSON schema (`responseFormat`), a low temperature and the image as inline base64. The reply is validated with **Zod**; fields that are not in the schema are dropped. Invalid JSON is retried once; if it fails again the scan is marked *failed* and the user can add items by hand.
-2. **Text in images is data.** The system prompt tells Gemini to ignore any instructions printed in images or item names, and the code only accepts schema fields. In commands and recipes the model only sees short refs (`i3`, `r2`) for items; refs that weren't sent are rejected.
+2. **Text in images is data.** The system prompt tells Gemini to ignore any instructions printed in images or item names, and the code only accepts schema fields. In commands and recipes the model only sees short refs (`i3`, `r2`) for items; refs that weren't sent are rejected. Recipe-chat messages are used only to choose recipes: they can't change the model's role, rules or output format, and the chat never edits your food.
 3. **A whitelist the database enforces.** The AI may only change `name, brand, category, storage_location, quantity, unit, price_cents, barcode, purchase_date, expiration_date, expiration_source, opened_at, notes`. The RPCs (`confirm_scan`, `apply_ai_changes`) raise an error for anything else. They never touch `id`, `user_id`, `created_at`, scan links or `user_locked_fields`. Status changes only through user-confirmed `mark_used` / `mark_wasted`. **There is no delete operation.**
 4. **The user always wins.** When you edit a field yourself, a database trigger adds it to `user_locked_fields`. The AI RPCs run `set_config('app.edit_source', 'ai', true)`, so their own writes don't lock anything. They skip locked fields and report the skips ("Expiration date stays Oct 20, you set it yourself").
 5. **One transaction, fully logged.** `apply_ai_changes` checks ownership through Row Level Security and writes one `ai_edit_log` row per changed field (old value, new value, confidence, model, reason) under a single `batch_id`. Moving an item to the freezer or opening it recalculates the expiration date from the shelf-life table unless you locked that date. Using the last of an item marks it used.

@@ -2,6 +2,7 @@ import { Check, ChevronRight, ClipboardCheck, Package, Receipt, RefreshCw, Trian
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ImagePicker } from '../components/ImagePicker';
+import { ScanOverlay } from '../components/ai-effects';
 import { ErrorNote, PageHeader, Spinner } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
 import { ApiError, errorMessage, scanImage } from '../lib/api';
@@ -122,7 +123,12 @@ export function ScanPage() {
           <ErrorNote>Scanning needs an internet connection. You can still look through your list.</ErrorNote>
         ) : busy ? (
           <div className="flex flex-col items-center gap-5 py-4 sm:flex-row sm:items-start">
-            {preview && <img src={preview} alt="Your photo" className="max-h-56 w-auto rounded-xl border border-line object-contain" />}
+            {preview && (
+              <div className={`shrink-0 border border-line ${step === 'read' ? 'scan-frame bg-ink' : 'overflow-hidden rounded-xl'}`}>
+                <img src={preview} alt="Your photo" className="block max-h-56 w-auto object-contain" />
+                {step === 'read' && <ScanOverlay />}
+              </div>
+            )}
             <ol className="w-full max-w-xs space-y-3" aria-live="polite">
               {STEPS.map((s, i) => (
                 <li key={s.key} className={`flex items-center gap-3 ${i > stepIndex ? 'text-fg-2' : 'font-semibold'}`}>

@@ -117,7 +117,7 @@ export function CommandBar({ locale }: { locale: string }) {
   }
 
   return (
-    <section aria-labelledby="command-title" className="card p-4 sm:p-5">
+    <section aria-labelledby="command-title" className={`card p-4 sm:p-5 ${busy ? 'ai-glow' : ''}`}>
       <h2 id="command-title" className="mb-2 flex items-center gap-2 font-bold">
         <Sparkles size={18} aria-hidden /> Tell FridgeWise what happened
       </h2>

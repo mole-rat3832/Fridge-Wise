@@ -53,7 +53,34 @@ export const scanImage = (scanId: string) =>
 export const aiCommand = (text: string, previous?: { request: string; question: string }) =>
   invoke<CommandResponse>('ai-command', { text, previous: previous ?? null });
 
-export const suggestRecipes = (servings?: number) => invoke<{ recipes: Recipe[]; model: string }>('suggest-recipes', servings ? { servings } : {});
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+export interface RecipeChatReply {
+  reply: string;
+  quick_replies: string[];
+  brief: string | null;
+  ready: boolean;
+}
+
+/** Recipe ideas, shaped by the conversation (if any). */
+export const suggestRecipes = (opts: { servings?: number; conversation?: ChatMessage[]; brief?: string | null } = {}) =>
+  invoke<{ recipes: Recipe[]; model: string }>('suggest-recipes', {
+    ...(opts.servings ? { servings: opts.servings } : {}),
+    ...(opts.conversation?.length ? { conversation: opts.conversation.slice(-12) } : {}),
+    ...(opts.brief ? { brief: opts.brief } : {}),
+  });
+
+/** One turn of the conversation before generating recipes. */
+export const recipeChat = (conversation: ChatMessage[], opts: { servings?: number; brief?: string | null } = {}) =>
+  invoke<RecipeChatReply>('suggest-recipes', {
+    mode: 'chat',
+    conversation: conversation.slice(-12),
+    ...(opts.servings ? { servings: opts.servings } : {}),
+    ...(opts.brief ? { brief: opts.brief } : {}),
+  });
 
 // RPCs ------------------------------------------------------------------------
 export const confirmScan = (scanId: string, items: Array<Record<string, unknown>>) =>
