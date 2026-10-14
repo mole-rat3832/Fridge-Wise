@@ -1,4 +1,10 @@
 -- Account deletion and demo data.
+--
+-- Demo data is only for demo accounts. An admin marks one in the user's app_metadata, which
+-- users cannot change themselves (SQL editor):
+--   update auth.users set raw_app_meta_data = raw_app_meta_data || '{"demo": true}' where email = '...';
+-- The flag reaches the app in the access token at the next sign-in. Regular accounts never see
+-- the demo controls, and load_demo_data / clear_demo_data refuse them.
 
 -- ---------------------------------------------------------------------------
 -- delete_my_account(): removes the caller's auth user. Every user-owned table references
@@ -26,6 +32,19 @@ $$;
 revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
 
+-- True when the caller's token says this is a demo account (app_metadata.demo = true).
+create or replace function private.is_demo_account()
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(auth.jwt() -> 'app_metadata' ->> 'demo', '') = 'true';
+$$;
+
+revoke all on function private.is_demo_account() from public, anon;
+grant execute on function private.is_demo_account() to authenticated, service_role;
+
 -- ---------------------------------------------------------------------------
 -- load_demo_data(): about 20 active items with mixed expiration dates (relative to the
 -- user's "today"), plus a few weeks of used/wasted history so Stats has something to show.
@@ -46,6 +65,9 @@ declare
 begin
   if v_uid is null then
     raise exception 'Not signed in' using errcode = '28000';
+  end if;
+  if not private.is_demo_account() then
+    raise exception 'Demo data is only available on demo accounts' using errcode = '42501';
   end if;
   v_today := private.user_today(v_uid);
   v_tz := private.user_timezone(v_uid);
@@ -138,6 +160,9 @@ declare
 begin
   if auth.uid() is null then
     raise exception 'Not signed in' using errcode = '28000';
+  end if;
+  if not private.is_demo_account() then
+    raise exception 'Demo data is only available on demo accounts' using errcode = '42501';
   end if;
   delete from public.food_items where user_id = auth.uid() and is_demo;
   get diagnostics v_count = row_count;

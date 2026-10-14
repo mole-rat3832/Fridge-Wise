@@ -41,6 +41,38 @@ async function vapidPublicKey(): Promise<string> {
   return data.value;
 }
 
+function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+  if (!a) return false;
+  const x = new Uint8Array(a);
+  return x.length === b.length && x.every((v, i) => v === b[i]);
+}
+
+async function isBrave(): Promise<boolean> {
+  const brave = (navigator as Navigator & { brave?: { isBrave?: () => Promise<boolean> } }).brave;
+  return Boolean(await brave?.isBrave?.().catch(() => false));
+}
+
+/** Turn the browser's push errors into something the user can act on. */
+async function explainSubscribeError(err: unknown): Promise<Error> {
+  const name = err instanceof DOMException ? err.name : '';
+  const message = err instanceof Error ? err.message : String(err);
+  if (name === 'NotAllowedError') {
+    return new Error('Notifications are blocked. Allow them in your browser settings to get reminders.');
+  }
+  // "Registration failed - push service error": the browser could not reach its push service.
+  if (name === 'AbortError' || /push service/i.test(message)) {
+    if (await isBrave()) {
+      return new Error(
+        'Brave blocks push notifications by default. Open brave://settings/privacy, turn on "Use Google services for push messaging", restart Brave and try again.',
+      );
+    }
+    return new Error(
+      "Your browser couldn't reach its notification service. Check that a VPN, ad blocker or network filter isn't blocking it, or try Chrome, Edge, Firefox or Safari. Private/incognito windows don't support notifications.",
+    );
+  }
+  return err instanceof Error ? err : new Error(message);
+}
+
 /** Ask permission, subscribe, and store the subscription for this user. */
 export async function enablePush(): Promise<void> {
   const support = pushSupport();
@@ -53,8 +85,17 @@ export async function enablePush(): Promise<void> {
 
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
+  // A subscription made with a different server key can't receive our pushes: replace it.
+  if (sub && !sameKey(sub.options.applicationServerKey, applicationServerKey)) {
+    await sub.unsubscribe().catch(() => undefined);
+    sub = null;
+  }
   if (!sub) {
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    try {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    } catch (err) {
+      throw await explainSubscribeError(err);
+    }
   }
   const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
   const { error } = await supabase

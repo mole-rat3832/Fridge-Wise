@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ErrorNote, PageHeader, Sheet, Spinner, Toggle } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
 import { clearDemoData, deleteMyAccount, errorMessage, loadDemoData } from '../lib/api';
+import { isDemoAccount } from '../lib/demo';
 import { toCsv, downloadFile } from '../lib/csv';
 import { browserTimeZone, supportedTimeZones } from '../lib/dates';
 import { currentSubscription, disablePush, enablePush, isIOS, isStandalone, pushSupport, testNotification } from '../lib/push';
@@ -312,18 +313,20 @@ export function Settings() {
             {busy === 'export-history' ? <Spinner /> : <Download size={18} aria-hidden />} Export history (CSV)
           </button>
         </div>
-        <div className="rounded-xl bg-tint p-4">
-          <p className="font-semibold">Demo mode</p>
-          <p className="mt-1 text-sm text-fg-2">Fill your account with about 20 realistic items with mixed expiration dates, plus a few weeks of history for Stats.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" className="btn btn-primary" onClick={() => void demo(true)} disabled={busy !== null || !online}>
-              {busy === 'demo' ? <Spinner /> : <Sparkles size={18} aria-hidden />} Load demo data
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={() => void demo(false)} disabled={busy !== null || !online}>
-              Remove demo data
-            </button>
+        {isDemoAccount(user) && (
+          <div className="rounded-xl bg-tint p-4">
+            <p className="font-semibold">Demo mode</p>
+            <p className="mt-1 text-sm text-fg-2">This is a demo account. Reload about 20 realistic items with mixed expiration dates, plus a few weeks of history for Stats.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="btn btn-primary" onClick={() => void demo(true)} disabled={busy !== null || !online}>
+                {busy === 'demo' ? <Spinner /> : <Sparkles size={18} aria-hidden />} Load demo data
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => void demo(false)} disabled={busy !== null || !online}>
+                Remove demo data
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </Section>
 
       <Section icon={<UserRound size={20} aria-hidden />} title="Account">
