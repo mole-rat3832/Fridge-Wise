@@ -115,6 +115,25 @@ export type Database = {
         };
         Relationships: [];
       };
+      app_public_config: {
+        Row: {
+          key: string;
+          updated_at: string;
+          value: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          key: string;
+          updated_at?: string;
+          value: string;
+        };
+        Update: {
+          key?: string;
+          updated_at?: string;
+          value?: string;
+        };
+        Relationships: [];
+      };
       food_items: {
         Row: {
           ai_confidence: number | null;
@@ -585,7 +604,22 @@ export type Database = {
       record_item_use: { Args: { p_amount?: number; p_item_id: string }; Returns: Json };
       record_item_waste: { Args: { p_item_id: string }; Returns: Json };
       shelf_life_lookup: { Args: { p_items: Json }; Returns: Json };
+      store_vapid_keys: {
+        Args: { p_private: string; p_public: string };
+        Returns: {
+          private_key: string;
+          public_key: string;
+        }[];
+      };
       undo_ai_batch: { Args: { p_batch_id: string }; Returns: Json };
+      vapid_keys: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          private_key: string;
+          public_key: string;
+        }[];
+      };
+      verify_cron_secret: { Args: { p_secret: string }; Returns: boolean };
     };
     Enums: {
       edit_action: "insert" | "update" | "mark_used" | "mark_wasted";

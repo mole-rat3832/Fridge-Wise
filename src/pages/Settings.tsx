@@ -224,9 +224,7 @@ export function Settings() {
               ? 'On iPhone and iPad, push works only after you add FridgeWise to your Home Screen (Share → Add to Home Screen) on iOS 16.4 or later. Then open the installed app and turn this on.'
               : support === 'unsupported'
                 ? "This browser doesn't support push notifications."
-                : support === 'not-configured'
-                  ? 'Push is not configured on this site yet.'
-                  : 'One grouped reminder in the morning (your time) when food is about to expire.'
+                : 'One grouped reminder in the morning (your time) when food is about to expire.'
           }
           checked={pushOn}
           disabled={pushBusy || support !== 'supported' || !online}

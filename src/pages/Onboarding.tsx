@@ -109,7 +109,7 @@ export function Onboarding() {
               {pushState === 'on' ? 'Notifications on' : 'Turn on notifications'}
             </button>
           ) : (
-            <p className="text-sm text-fg-2">{support === 'not-configured' ? 'Notifications are not set up on this site yet.' : "This browser doesn't support notifications."}</p>
+            <p className="text-sm text-fg-2">This browser doesn't support notifications.</p>
           )}
           <p className="text-sm text-fg-2">You can change this any time in Settings.</p>
         </div>

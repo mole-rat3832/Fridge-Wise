@@ -1,4 +1,4 @@
-// Generates every app icon from the logo, unchanged: fridgewise-logo.png (1024x1024, transparent).
+// Generates every app icon from the logo, unchanged: fridgewise-logo.png (square PNG, transparent background).
 //
 //   npm run icons        (also runs automatically before `npm run build`)
 //

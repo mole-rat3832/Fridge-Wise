@@ -1,14 +1,18 @@
 // send-reminders: scheduled by pg_cron (see the reminders migration). Not callable by users.
 //
-// POST { task: "reminders" | "cleanup" } with header x-cron-secret: <CRON_SECRET>
+// POST { task: "reminders" | "cleanup" | "setup" } with header x-cron-secret: <secret>
 //
 // reminders: one grouped Web Push notification per user for active items expiring within their
 //            reminder_days_before (in their timezone), logged to reminder_log (unique per day).
 // cleanup:   deletes scan images older than 30 days through the Storage API.
+// setup:     makes sure the Web Push keys exist (they are created on first use otherwise).
+//
+// The cron secret and the VAPID keys live in Supabase Vault (see the reminders migration), so no
+// one has to copy them around. CRON_SECRET / VAPID_* edge function secrets, if set, take priority.
 //
 // This is the ONLY place the secret (service role) key is used.
 import * as webpush from 'jsr:@negrel/webpush@0.5.0';
-import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
+import { createClient as createSupabaseClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { readKey } from '../_shared/supabase.ts';
 
@@ -38,11 +42,34 @@ function bytesToB64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** VAPID keys are stored in the standard base64url format (same as `npx web-push generate-vapid-keys`). */
-async function loadVapidKeys(): Promise<CryptoKeyPair> {
-  const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')?.trim();
-  const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim();
-  if (!publicKey || !privateKey) throw new HttpError(503, 'VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not set.', 'push_not_configured');
+/** A new P-256 key pair in the standard base64url format (same as `npx web-push generate-vapid-keys`). */
+async function generateVapidPair(): Promise<{ publicKey: string; privateKey: string }> {
+  const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair;
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey));
+  const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+  return { publicKey: bytesToB64url(raw), privateKey: jwk.d! };
+}
+
+/** VAPID keys: edge function secrets if set, otherwise the pair kept in Vault (created on first use). */
+async function vapidKeyStrings(admin: SupabaseClient): Promise<{ publicKey: string; privateKey: string }> {
+  const envPublic = Deno.env.get('VAPID_PUBLIC_KEY')?.trim();
+  const envPrivate = Deno.env.get('VAPID_PRIVATE_KEY')?.trim();
+  if (envPublic && envPrivate) return { publicKey: envPublic, privateKey: envPrivate };
+
+  const { data, error } = await admin.rpc('vapid_keys');
+  if (error) throw new Error(error.message);
+  const row = (data as Array<{ public_key: string | null; private_key: string | null }> | null)?.[0];
+  if (row?.public_key && row.private_key) return { publicKey: row.public_key, privateKey: row.private_key };
+
+  const fresh = await generateVapidPair();
+  const { data: stored, error: storeError } = await admin.rpc('store_vapid_keys', { p_public: fresh.publicKey, p_private: fresh.privateKey });
+  if (storeError) throw new Error(storeError.message);
+  const kept = (stored as Array<{ public_key: string; private_key: string }>)[0];
+  return { publicKey: kept.public_key, privateKey: kept.private_key };
+}
+
+async function loadVapidKeys(admin: SupabaseClient): Promise<CryptoKeyPair> {
+  const { publicKey, privateKey } = await vapidKeyStrings(admin);
   const pub = b64urlToBytes(publicKey);
   if (pub.length !== 65 || pub[0] !== 4) throw new HttpError(503, 'VAPID_PUBLIC_KEY is not a valid P-256 key.', 'push_not_configured');
   const x = bytesToB64url(pub.slice(1, 33));
@@ -73,19 +100,31 @@ function buildMessage(items: DueRow['items']) {
   };
 }
 
+async function authorized(admin: SupabaseClient, given: string): Promise<boolean> {
+  if (!given) return false;
+  const expected = Deno.env.get('CRON_SECRET')?.trim();
+  if (expected) return timingSafeEqual(expected, given);
+  const { data, error } = await admin.rpc('verify_cron_secret', { p_secret: given });
+  return !error && data === true;
+}
+
 serve(async (req) => {
-  const expected = Deno.env.get('CRON_SECRET') ?? '';
-  const given = req.headers.get('x-cron-secret') ?? '';
-  if (!expected || !timingSafeEqual(expected, given)) {
+  const admin = createSupabaseClient(Deno.env.get('SUPABASE_URL')!, readKey('SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY'), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  if (!(await authorized(admin, req.headers.get('x-cron-secret') ?? ''))) {
     throw new HttpError(401, 'Unauthorized.', 'unauthorized');
   }
 
   const body = (await readJson(req).catch(() => ({}))) as { task?: string };
-  const task = body.task === 'cleanup' ? 'cleanup' : 'reminders';
+  const task = body.task === 'cleanup' ? 'cleanup' : body.task === 'setup' ? 'setup' : 'reminders';
 
-  const admin = createClient(Deno.env.get('SUPABASE_URL')!, readKey('SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY'), {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  // -------------------------------------------------------------------------
+  if (task === 'setup') {
+    const { publicKey } = await vapidKeyStrings(admin);
+    return json(req, { task, vapid_public_key: publicKey });
+  }
 
   // -------------------------------------------------------------------------
   if (task === 'cleanup') {
@@ -119,8 +158,9 @@ serve(async (req) => {
   const due = (data ?? []) as DueRow[];
   if (due.length === 0) return json(req, { task, users: 0, sent: 0 });
 
-  const vapidKeys = await loadVapidKeys();
-  const contact = Deno.env.get('VAPID_SUBJECT')?.trim() || 'mailto:admin@example.com';
+  const vapidKeys = await loadVapidKeys(admin);
+  // Contact for push services (mailto: or https: URL). Optional; set VAPID_SUBJECT to your own.
+  const contact = Deno.env.get('VAPID_SUBJECT')?.trim() || 'mailto:fridgewise@example.com';
 
   let sent = 0;
   let failed = 0;

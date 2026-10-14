@@ -51,7 +51,7 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 4. **The user always wins.** When you edit a field yourself, a database trigger adds it to `user_locked_fields`. The AI RPCs run `set_config('app.edit_source', 'ai', true)`, so their own writes don't lock anything. They skip locked fields and report the skips ("Expiration date stays Oct 20, you set it yourself").
 5. **One transaction, fully logged.** `apply_ai_changes` checks ownership through Row Level Security and writes one `ai_edit_log` row per changed field (old value, new value, confidence, model, reason) under a single `batch_id`. Moving an item to the freezer or opening it recalculates the expiration date from the shelf-life table unless you locked that date. Using the last of an item marks it used.
 6. **Undo.** `undo_ai_batch(batch_id)` restores the old value only where the field still has the AI's value. Fields you changed since are left alone and listed. Items a batch created are removed only if they're untouched.
-7. **Quotas.** Each user gets 40 scans and 60 AI requests (commands + recipes) per day, counted in an append-only `ai_usage` table inside the edge functions.
+7. **Quotas.** Each user gets 40 scans and 60 AI requests (commands + recipes) per day, counted in an append-only `ai_usage` table by `claim_ai_quota` before every Gemini call. One photo can be processed at most 3 times.
 
 ---
 
@@ -60,13 +60,14 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 ```
 src/                     React app (pages/, components/, lib/, state/, sw.ts service worker)
 src/types/database.ts    Generated Supabase types
-public/                  Icons, _headers (security headers + CSP), _redirects (SPA)
+public/                  Icons, og-image.png (link previews), screenshots/ (install dialog), humans.txt
 supabase/migrations/     All schema changes (the database matches these files)
 supabase/functions/      scan-image, ai-command, suggest-recipes, send-reminders (+ _shared)
-supabase/tests/          pgTAP database tests (55 checks)
+supabase/tests/          pgTAP database tests (61 checks)
 tests/unit/              Vitest tests for normalization and command planning
-scripts/                 generate-icons.mjs, generate-vapid-keys.mjs
-netlify.toml             Build settings
+scripts/                 generate-icons.mjs, generate-og-image.mjs, generate-vapid-keys.mjs
+netlify.toml             Build settings, public build variables, SPA redirect, security + cache headers
+vite.config.ts           Also writes robots.txt, sitemap.xml and the Open Graph tags at build time
 ```
 
 ---
@@ -80,19 +81,23 @@ netlify.toml             Build settings
 - A Google AI Studio API key for Gemini
 - Optional: a Cloudflare Turnstile widget (site key + secret key)
 
+Only two values are secret: the **Gemini API key** and the **Turnstile secret key**. Both are entered in the Supabase dashboard and never go into this repo, `.env` or Netlify. The cron secret and the Web Push (VAPID) keys are generated inside the project and kept in Supabase Vault, so nobody has to copy them around.
+
 ```bash
 npm install
 cp .env.example .env      # fill in the values below; never commit .env
 ```
 
-### 2. Browser environment variables (`.env` locally, Netlify → Site configuration → Environment variables in production)
+### 2. Browser environment variables (`.env` locally, `[build.environment]` in `netlify.toml` in production)
+
+These are all public: they end up in the JavaScript bundle, and Row Level Security decides what the publishable key may do. `netlify.toml` already contains the values for the FridgeWiseDatabase project; change them there if you use another project (variables set in the Netlify UI work too).
 
 | Variable | Value |
 |---|---|
 | `VITE_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | The **publishable** key (`sb_publishable_…`) or legacy anon key. Never the secret / service role key. |
 | `VITE_TURNSTILE_SITE_KEY` | Turnstile site key. Leave empty until Turnstile is ready; the widget is then hidden. |
-| `VITE_VAPID_PUBLIC_KEY` | `VAPID_PUBLIC_KEY` from step 4 |
+| `VITE_VAPID_PUBLIC_KEY` | Optional. Without it the app reads the Web Push public key from the `app_public_config` table. |
 
 ### 3. Database, storage and functions
 
@@ -111,23 +116,22 @@ Then in **Authentication → URL Configuration**, set the **Site URL** to your N
 
 | Secret | What it is |
 |---|---|
-| `GEMINI_API_KEY` | Your Google Gemini API key. Never commit it or put it in `.env`. |
-| `GEMINI_MODEL` | `gemini-3.8-flash` (Google's current recommended general vision model; `gemini-3.5-flash-lite` is the cheaper option). |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Run `npm run vapid` (or `npx web-push generate-vapid-keys`). The public key also goes in `VITE_VAPID_PUBLIC_KEY`. |
-| `VAPID_SUBJECT` | `mailto:you@yourdomain.com` (contact for push services) |
-| `CRON_SECRET` | A long random string (`openssl rand -hex 32`); the same value goes in Vault below. |
+| `GEMINI_API_KEY` | **Required for the AI features.** Your Google Gemini API key. Never commit it or put it in `.env`. Until it is set, scans and commands answer "The AI features are not set up yet" and everything else works. |
+| `GEMINI_MODEL` | Optional, default `gemini-3.8-flash` (Google's current recommended general vision model; `gemini-3.5-flash-lite` is the cheaper option). |
+| `VAPID_SUBJECT` | Optional. `mailto:you@yourdomain.com`, the contact address push services see. |
 | `ALLOWED_ORIGINS` | Optional. Comma-separated origins for CORS, e.g. `https://fridgewise.netlify.app`. |
+| `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Optional overrides only. By default the cron secret is generated by the reminders migration and the VAPID keys by `send-reminders` on first use; both live in Vault. |
 
 `SUPABASE_URL` and the API keys are provided to functions automatically. The secret (service role) key is used **only** in `send-reminders`. The other functions create their client with the caller's `Authorization` header, so Row Level Security applies.
 
 ### 5. Turn on the scheduled jobs (SQL editor, once)
 
 ```sql
-select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
-select vault.create_secret('<the same CRON_SECRET value>', 'cron_secret');
+select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');   -- not a secret, just the API URL
+select private.invoke_edge_function('send-reminders', '{"task": "setup"}');       -- creates the Web Push keys now
 ```
 
-pg_cron then runs:
+The `cron_secret` Vault entry is created by the migration with `gen_random_bytes`. pg_cron then runs:
 
 - `send-reminders` **hourly**, so each user gets their reminder once their local time is past 8:00;
 - the deletion of scan images older than 30 days, **daily**;
@@ -137,25 +141,37 @@ pg_cron then runs:
 
 ### 6. Cloudflare Turnstile (CAPTCHA)
 
-1. Add the **site key** as `VITE_TURNSTILE_SITE_KEY` in Netlify and redeploy.
-2. In Supabase go to **Authentication → Bot and Abuse Protection** (`/dashboard/project/<ref>/auth/protection`), turn on **Enable CAPTCHA protection**, choose **Cloudflare Turnstile**, paste the **secret key**, and click **Save**.
+1. In the Cloudflare dashboard (**Turnstile → your widget → Hostname management**), add your Netlify domain, e.g. `fridgewise.netlify.app` (subdomains such as deploy previews are included) and any custom domain.
+2. Put the **site key** in `VITE_TURNSTILE_SITE_KEY` (already in `netlify.toml`) and deploy.
+3. In Supabase go to **Authentication → Bot and Abuse Protection** (`/dashboard/project/<ref>/auth/protection`), turn on **Enable CAPTCHA protection**, choose **Cloudflare Turnstile**, paste the **secret key**, and click **Save**.
 
-Do step 1 before step 2. Once CAPTCHA protection is on, Supabase rejects sign-ins that don't include a token. The app renders the widget on sign up, sign in and password reset, passes `options.captchaToken`, and resets the widget after every attempt (tokens are single-use).
+Do step 2 before step 3. Once CAPTCHA protection is on, Supabase rejects sign-ins that don't include a token. The app renders the widget on sign up, sign in and password reset, passes `options.captchaToken`, and resets the widget after every attempt (tokens are single-use).
 
 ### 7. Logo and icons
 
-Put `fridgewise-logo.png` (1024×1024, transparent) in the repo root. `npm run icons` runs automatically before every build. It generates the favicon, the apple-touch-icon (180), the PWA icons (192, 512, maskable 512), the notification badge and the in-app logo, all from the logo without changing it. Icons that can't be transparent go on the palette color with the best contrast against the logo, with safe-zone padding (`ICON_BG=#6BAA75 npm run icons` picks the color yourself). Until the logo is added, neutral placeholder icons are used.
+Put `fridgewise-logo.png` (square, transparent background) in the repo root. `npm run icons` runs automatically before every build. It generates the favicon, the apple-touch-icon (180), the PWA icons (192, 512, maskable 512), the notification badge and the in-app logo, all from the logo without changing it. Icons that can't be transparent go on the palette color with the best contrast against the logo, with safe-zone padding (`ICON_BG=#6BAA75 npm run icons` picks the color yourself). Until the logo is added, neutral placeholder icons are used. `npm run og` makes the 1200×630 link-preview image (`public/og-image.png`); it's committed, so builds don't depend on fonts.
+
+### 8. Auth emails
+
+Sign-up confirmations and password-reset links are sent by Supabase Auth. Supabase's built-in email service is meant for testing: it only delivers to the email addresses of your Supabase organization's team members, and only a few messages per hour. For real users, either add your own SMTP provider in **Authentication → Emails → SMTP Settings**, or (for a demo) turn off **Confirm email** under **Authentication → Sign In / Providers → Email** so new accounts can sign in right away.
 
 ---
 
 ## Deploy to Netlify
 
 1. Push the repo to GitHub, then in Netlify: **Add new site → Import an existing project** and pick the repo.
-2. Build command `npm run build`, publish directory `dist` (already in `netlify.toml`).
-3. Add the four `VITE_…` variables (step 2) and deploy.
-4. Add the Netlify URL to Supabase Auth redirect URLs (step 3).
+2. Netlify reads everything from `netlify.toml`: build command `npm run build`, publish directory `dist`, Node 22 and the public `VITE_…` variables. Click **Deploy**.
+3. Add the Netlify URL to Supabase Auth (step 3), add it to the Turnstile widget's hostnames (step 6), and then turn on CAPTCHA in Supabase.
 
-`public/_headers` sets security headers and a Content Security Policy that allows only your Supabase project (`*.supabase.co`) and Turnstile. If you use a Supabase custom domain, add it to `connect-src` and `img-src` there. `public/_redirects` serves `index.html` for every route.
+What `netlify.toml` and the build add:
+
+- **SPA routing**: every path that isn't a file serves `index.html`.
+- **Security headers**: a Content Security Policy that allows only this site, Supabase (`*.supabase.co`) and Turnstile, plus `X-Frame-Options: DENY`, `nosniff`, a strict referrer policy, HSTS, `Cross-Origin-Opener-Policy` and a Permissions-Policy that allows only the camera. If you use a Supabase custom domain, add it to `connect-src` and `img-src`.
+- **Caching**: hashed `/assets/*` are cached for a year; `sw.js` and the manifest are always revalidated so installed apps update.
+- **robots.txt and sitemap.xml**, written at build time from Netlify's `URL`. The signed-in pages are disallowed, the sign-in and sign-up pages are listed. Deploy previews and branch deploys get `Disallow: /` and a `noindex` tag. Set `SITE_URL` to override the address (for another host or a custom domain).
+- **Link previews**: Open Graph and Twitter tags with `og-image.png`, and a preconnect to Supabase.
+- **Install screenshots** in the web app manifest (Chrome/Edge show them in the install dialog). They're not precached.
+- `humans.txt` credits the tools and data the app is built on.
 
 ---
 
@@ -187,7 +203,7 @@ Migrations are in `supabase/migrations`. The tables follow the brief, with these
 
 - `profiles.locale` (to read ambiguous printed dates), `profiles.onboarded_at`, `profiles.updated_at`
 - `food_items.is_demo` (so demo data can be removed again)
-- `scans.attempts` (caps retries to protect the Gemini quota)
+- `scans.attempts` (informational; the retry cap is enforced from `ai_usage`)
 - `scan_items.position`, `storage_instructions`, `notes`, `confidence`, and a `printed_date_type` enum
 - `ai_edit_log.source` also allows `'user'` and has a `reason` column. The item history then shows your own edits and quick *Used* / *Tossed* actions next to AI edits.
 - `recipes.time_minutes`, `servings`, `model`, `made_at`
@@ -203,3 +219,4 @@ All tables have Row Level Security: user-owned rows require `user_id = auth.uid(
 - Gemini 3.6 and newer ignore `temperature`; it's still sent (0.15) for older models. If the API rejects `responseFormat`, the client retries once with `responseMimeType` + `responseJsonSchema`.
 - Shelf-life values are based on USDA FoodKeeper guidance (conservative end of each range). They're estimates, so always trust the package and your senses.
 - Email reminders are not included yet; `profiles.notify_email` is ready for them.
+- Migrations that contain `delete` statements (`undo_rpc`, `account_and_demo`, `cleanup_jobs`) are kept in their own files, because the Supabase connector asks for confirmation before running them.

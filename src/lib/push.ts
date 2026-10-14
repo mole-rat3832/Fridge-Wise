@@ -11,10 +11,9 @@ export function isStandalone(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-export type PushSupport = 'supported' | 'needs-install' | 'unsupported' | 'not-configured';
+export type PushSupport = 'supported' | 'needs-install' | 'unsupported';
 
 export function pushSupport(): PushSupport {
-  if (!env.vapidPublicKey) return 'not-configured';
   if (isIOS() && !isStandalone()) return 'needs-install'; // iOS 16.4+: only for apps added to the Home Screen
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
   return 'supported';
@@ -34,20 +33,28 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
   return (await reg?.pushManager.getSubscription()) ?? null;
 }
 
+/** The Web Push public key: from the build (VITE_VAPID_PUBLIC_KEY) or from the server's public config. */
+async function vapidPublicKey(): Promise<string> {
+  if (env.vapidPublicKey) return env.vapidPublicKey;
+  const { data } = await supabase.from('app_public_config').select('value').eq('key', 'vapid_public_key').maybeSingle();
+  if (!data?.value) throw new Error('Reminders are not switched on for this site yet. Please try again later.');
+  return data.value;
+}
+
 /** Ask permission, subscribe, and store the subscription for this user. */
 export async function enablePush(): Promise<void> {
   const support = pushSupport();
-  if (support === 'not-configured') throw new Error('Push is not configured for this site yet (VITE_VAPID_PUBLIC_KEY is missing).');
   if (support === 'needs-install') throw new Error('On iPhone and iPad, add FridgeWise to your Home Screen first (Share → Add to Home Screen), then turn on notifications from the installed app. Requires iOS 16.4 or later.');
   if (support === 'unsupported') throw new Error("This browser doesn't support push notifications.");
 
+  const applicationServerKey = urlBase64ToUint8Array(await vapidPublicKey());
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notifications are blocked. Allow them in your browser settings to get reminders.');
 
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
-    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(env.vapidPublicKey!) });
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
   }
   const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
   const { error } = await supabase

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:db": "supabase test db",
     "icons": "node scripts/generate-icons.mjs",
+    "og": "node scripts/generate-og-image.mjs",
     "vapid": "node scripts/generate-vapid-keys.mjs",
     "types": "supabase gen types typescript --local > src/types/database.ts"
   },

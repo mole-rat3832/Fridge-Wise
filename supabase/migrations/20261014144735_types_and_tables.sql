@@ -99,7 +99,7 @@ create table public.scans (
   model text,
   raw_response jsonb,
   error text,
-  -- Added: number of processing attempts, capped by scan-image to protect the Gemini quota.
+  -- Added: number of processing attempts (informational; the cap is enforced from ai_usage).
   attempts smallint not null default 0,
   created_at timestamptz not null default now(),
   processed_at timestamptz,
