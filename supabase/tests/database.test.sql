@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(63);
+select plan(68);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures: two users (profiles are created by the auth trigger)
@@ -240,6 +240,21 @@ select is((select (claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002'
 select is((select (claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'used')::int), 1, 'retrying the same scan does not count again');
 select is((select (claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'allowed')::boolean), true, 'third attempt is allowed');
 select is((select claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002') ->> 'reason'), 'too_many_attempts', 'a fourth attempt on one scan is refused');
+select is((select (ai_usage_today() ->> 'scans_used')::int), 1, 'ai_usage_today counts a retried scan once');
+select is((select (ai_usage_today() ->> 'requests_used')::int), 0, 'ai_usage_today counts AI requests separately from scans');
+select ok((select (u ->> 'timezone') = 'America/New_York'
+              and (u ->> 'resets_at')::timestamptz > now()
+              and (u ->> 'resets_at')::timestamptz <= now() + interval '1 day'
+              and ((u ->> 'resets_at')::timestamptz at time zone 'America/New_York')::time = '00:00'
+           from (select ai_usage_today() as u) x),
+          'the limits reset at the next midnight in the user''s timezone');
+select pg_temp.login('22222222-2222-4222-8222-222222222222');
+select is((select (ai_usage_today() ->> 'scans_used')::int), 0, 'ai_usage_today only counts the caller''s own usage');
+select pg_temp.logout();
+select set_config('role', 'anon', true);
+select throws_ok($$ select ai_usage_today() $$, '42501', null, 'signed-out visitors cannot read usage');
+select pg_temp.logout();
+select pg_temp.login('11111111-1111-4111-8111-111111111111');
 select throws_ok($$ update ai_usage set created_at = now() - interval '2 days' $$, '42501', null, 'users cannot rewrite quota rows');
 select throws_ok($$ delete from ai_usage $$, '42501', null, 'users cannot delete quota rows');
 

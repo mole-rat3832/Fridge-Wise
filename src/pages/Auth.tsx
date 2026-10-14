@@ -12,7 +12,9 @@ function AuthLayout({ title, subtitle, children, footer }: { title: string; subt
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-10 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <Logo size={48} />
+          <Link to="/" aria-label="FridgeWise home">
+            <Logo size={48} />
+          </Link>
         </div>
         <div className="card p-6 shadow-sm">
           <h1 className="text-xl font-bold">{title}</h1>
@@ -20,6 +22,15 @@ function AuthLayout({ title, subtitle, children, footer }: { title: string; subt
           <div className="mt-5">{children}</div>
         </div>
         {footer && <div className="mt-5 text-center text-sm text-fg-2">{footer}</div>}
+        <p className="mt-4 text-center text-sm text-fg-2">
+          <Link to="/" className="underline underline-offset-2 hover:text-fg">
+            What is FridgeWise?
+          </Link>
+          <span aria-hidden> · </span>
+          <Link to="/guide" className="underline underline-offset-2 hover:text-fg">
+            How to use it
+          </Link>
+        </p>
       </div>
     </div>
   );

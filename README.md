@@ -21,6 +21,14 @@
 
 ## What it does
 
+FridgeWise is in **beta** (the header says so next to the name).
+
+**Find your way around**
+- **Homepage** at `/` for visitors: what FridgeWise is for, how it works, features, how the AI is kept in check, privacy and an FAQ. Signed-in users get their kitchen at `/` and can still read the homepage at `/about`.
+- **How to use FridgeWise** (`/guide`): the app's purpose and a step-by-step guide for new users, with small pictures of each screen and install instructions per device. Public, and shown inside the app when you're signed in.
+- **Explore tour**: the first time you open the app, a spotlight draws a ring around each part (scan, add, plain-language updates, the freshness lists, filters, every section of the menu, your daily limits, help) and explains what it does. Skip it at any step, use the arrow keys or Esc, and replay it from Settings → Help or the guide. Steps whose part isn't on screen (an empty kitchen, the phone layout) are left out.
+- **Your account and daily limits** at the bottom of the sidebar: your name above your email, and bars for scans and AI requests left today. Hover over (or tap) a bar for the reset time: midnight in your timezone, shown like *12:00 AM EDT*, and how long until then. Settings shows the same meters on phones.
+
 **Get food in, fast**
 - **Scan** a grocery receipt or a single product with the phone camera, a desktop webcam, a file, or drag and drop. Photos are compressed in the browser (max 1600 px, JPEG) and stored privately for 30 days.
 - **Review before anything is saved.** Every line is editable. Fields the AI was unsure about (under 70% confidence) are outlined and say *Check this*. Non-food lines (bags, tax, discounts) start unchecked.
@@ -106,7 +114,7 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 4. **The user always wins.** When you edit a field yourself, a database trigger adds it to `user_locked_fields`. The AI RPCs run `set_config('app.edit_source', 'ai', true)`, so their own writes don't lock anything. They skip locked fields and report the skips ("Expiration date stays Oct 20, you set it yourself").
 5. **One transaction, fully logged.** `apply_ai_changes` checks ownership through Row Level Security and writes one `ai_edit_log` row per changed field (old value, new value, confidence, model, reason) under a single `batch_id`. Moving an item to the freezer or opening it recalculates the expiration date from the shelf-life table unless you locked that date. Using the last of an item marks it used.
 6. **Undo.** `undo_ai_batch(batch_id)` restores the old value only where the field still has the AI's value. Fields you changed since are left alone and listed. Items a batch created are removed only if they're untouched.
-7. **Quotas.** Each user gets 40 scans and 60 AI requests (commands + recipes) per day, counted in an append-only `ai_usage` table by `claim_ai_quota` before every Gemini call. One photo can be processed at most 3 times.
+7. **Quotas.** Each user gets 40 scans and 60 AI requests (commands + recipes) per day, counted in an append-only `ai_usage` table by `claim_ai_quota` before every Gemini call. One photo can be processed at most 3 times. The meters in the app read `ai_usage_today()`, which counts the same way and returns the next reset (midnight in the user's timezone).
 
 ---
 
@@ -139,11 +147,11 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 ```
 src/                     React app (pages/, components/, lib/, state/, sw.ts service worker)
 src/types/database.ts    Generated Supabase types
-public/                  Icons, og-image.png (link previews), screenshots/ (install dialog), humans.txt
+public/                  Icons, og-image.png (link previews), screenshots/ (homepage + install dialog), humans.txt
 site/llms.txt            Summary of the app for AI assistants, served at /llms.txt
 supabase/migrations/     All schema changes (the database matches these files)
 supabase/functions/      scan-image, ai-command, suggest-recipes, send-reminders (+ _shared)
-supabase/tests/          pgTAP database tests (61 checks)
+supabase/tests/          pgTAP database tests (68 checks)
 tests/unit/              Vitest tests for normalization and command planning
 scripts/                 generate-icons.mjs, generate-og-image.mjs, generate-vapid-keys.mjs
 netlify.toml             Build settings, public build variables, SPA redirect, security + cache headers
@@ -236,7 +244,7 @@ What `netlify.toml` and the build add:
 - **SPA routing**: every path that isn't a file serves `index.html`.
 - **Security headers** (see [Security and privacy](#security-and-privacy)). If you use a Supabase custom domain, add it to `connect-src` and `img-src` in the CSP.
 - **Caching**: hashed `/assets/*` are cached for a year; `sw.js` and the manifest are always revalidated so installed apps update.
-- **robots.txt and sitemap.xml**, written at build time from Netlify's `URL`. Signed-in pages are disallowed; the sign-in and sign-up pages are listed. Deploy previews and branch deploys get `Disallow: /` and a `noindex` tag. Set `SITE_URL` to override the address (another host or a custom domain).
+- **robots.txt and sitemap.xml**, written at build time from Netlify's `URL`. Signed-in pages are disallowed; the homepage, the guide and the sign-in and sign-up pages are listed. Deploy previews and branch deploys get `Disallow: /` and a `noindex` tag. Set `SITE_URL` to override the address (another host or a custom domain).
 - **llms.txt** ([llmstxt.org](https://llmstxt.org)): a plain-language summary of what FridgeWise does, for AI assistants, with absolute links to the site. Edit it in `site/llms.txt`.
 - **Link previews**: Open Graph and Twitter tags with `og-image.png`, and a preconnect to Supabase.
 - **Install screenshots** in the web app manifest (Chrome and Edge show them in the install dialog). They're not precached.

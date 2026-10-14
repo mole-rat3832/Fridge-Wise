@@ -1,6 +1,33 @@
-import { Accessibility, Bell, Check, Settings as SettingsIcon, Contrast, Database, Download, Globe, LogOut, Monitor, Moon, Palette, Sparkles, Square, SquareRoundCorner, Sun, Trash, Type, UserRound } from 'lucide-react';
+import {
+  Accessibility,
+  BookOpen,
+  Bell,
+  Check,
+  CircleHelp,
+  Compass,
+  Settings as SettingsIcon,
+  Contrast,
+  Database,
+  Download,
+  Gauge,
+  Globe,
+  Info,
+  LogOut,
+  Monitor,
+  Moon,
+  Palette,
+  Sparkles,
+  Square,
+  SquareRoundCorner,
+  Sun,
+  Trash,
+  Type,
+  UserRound,
+} from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTour } from '../components/Tour';
+import { UsageMeter } from '../components/UsageMeter';
 import { ErrorNote, PageHeader, Sheet, Spinner, Toggle } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
 import { clearDemoData, deleteMyAccount, errorMessage, loadDemoData } from '../lib/api';
@@ -63,28 +90,15 @@ export function Settings() {
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
-  const [usage, setUsage] = useState<{ scans: number; commands: number } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteText, setDeleteText] = useState('');
   const support = pushSupport();
+  const tour = useTour();
 
   useEffect(() => {
     void currentSubscription().then((s) => setPushOn(Boolean(s) && Boolean(profile?.notify_push)));
   }, [profile?.notify_push]);
-
-  useEffect(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    void supabase
-      .from('ai_usage')
-      .select('kind')
-      .gte('created_at', start.toISOString())
-      .then(({ data }) => {
-        const rows = data ?? [];
-        setUsage({ scans: rows.filter((r) => r.kind === 'scan').length, commands: rows.filter((r) => r.kind !== 'scan').length });
-      });
-  }, []);
 
   async function save(patch: Parameters<typeof updateProfile>[0], message = 'Saved.') {
     try {
@@ -393,12 +407,27 @@ export function Settings() {
         </div>
       </Section>
 
+      <Section icon={<Gauge size={20} aria-hidden />} title="Daily AI limits">
+        <UsageMeter />
+      </Section>
+
+      <Section icon={<CircleHelp size={20} aria-hidden data-anim="wiggle" />} title="Help">
+        <div className="flex flex-wrap gap-2">
+          {tour && (
+            <button type="button" className="btn btn-primary" onClick={() => tour.start()}>
+              <Compass size={18} aria-hidden data-anim="spin" /> Take the tour
+            </button>
+          )}
+          <Link to="/guide" className="btn btn-secondary">
+            <BookOpen size={18} aria-hidden data-anim="wiggle" /> How to use FridgeWise
+          </Link>
+          <Link to="/about" className="btn btn-secondary">
+            <Info size={18} aria-hidden data-anim="pop" /> About FridgeWise
+          </Link>
+        </div>
+      </Section>
+
       <Section icon={<Database size={20} aria-hidden />} title="Your data">
-        {usage && (
-          <p className="text-sm text-fg-2">
-            AI today: {usage.scans} of 40 scans and {usage.commands} of 60 AI requests used.
-          </p>
-        )}
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-secondary" onClick={() => void exportItems()} disabled={busy !== null || !online}>
             {busy === 'export-items' ? <Spinner /> : <Download size={18} aria-hidden data-anim="drop" />} Export items (CSV)
