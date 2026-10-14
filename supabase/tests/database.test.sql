@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(61);
+select plan(63);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures: two users (profiles are created by the auth trigger)
@@ -23,6 +23,14 @@ select is((select timezone from profiles where id = '22222222-2222-4222-8222-222
 create or replace function pg_temp.login(p_uid uuid) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claims', json_build_object('sub', p_uid, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+end $$;
+
+-- A demo account: app_metadata.demo = true in the token (set by an admin, never by the user).
+create or replace function pg_temp.login_demo(p_uid uuid) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_uid, 'role', 'authenticated', 'app_metadata', json_build_object('demo', true))::text, true);
   perform set_config('role', 'authenticated', true);
 end $$;
 
@@ -235,7 +243,10 @@ select is((select claim_ai_quota('scan', 'dddddddd-0000-4000-8000-000000000002')
 select throws_ok($$ update ai_usage set created_at = now() - interval '2 days' $$, '42501', null, 'users cannot rewrite quota rows');
 select throws_ok($$ delete from ai_usage $$, '42501', null, 'users cannot delete quota rows');
 
-select is((select (load_demo_data() ->> 'active_items')::int), 23, 'demo data loads 23 active items');
+select throws_ok($$ select load_demo_data() $$, '42501', null, 'regular accounts cannot load demo data');
+select throws_ok($$ select clear_demo_data() $$, '42501', null, 'regular accounts cannot clear demo data');
+select pg_temp.login_demo('11111111-1111-4111-8111-111111111111');
+select is((select (load_demo_data() ->> 'active_items')::int), 23, 'demo accounts load 23 active items');
 select ok((select items_used > 0 and money_saved_cents > 0 from user_stats where period = 'all_time'), 'user_stats has all-time totals');
 
 select * from finish();

@@ -43,7 +43,8 @@
 **Works everywhere**
 - A Progressive Web App for Android, iOS, Windows, macOS and Linux: bottom navigation on phones, a sidebar on desktop, light and dark themes.
 - The app shell loads offline and says clearly when you're offline.
-- Settings: notifications, timezone, date format, theme, CSV export, demo data, delete account.
+- Settings: notifications, timezone, date format, theme, CSV export, delete account.
+- **Demo accounts** for judges and testers come with about 20 sample items and a few weeks of history. Regular accounts never see the demo controls.
 
 ---
 
@@ -161,7 +162,15 @@ npx supabase functions serve --env-file supabase/functions/.env   # GEMINI_API_K
 npm run dev                         # http://localhost:5173
 ```
 
-Pick **Start with demo data** during onboarding to get about 20 items and a few weeks of history to explore.
+### Demo accounts
+
+Demo data (about 20 items with mixed expiration dates, plus a few weeks of history for Stats) is only for demo accounts. An account becomes one when an admin sets `demo: true` in its app metadata, which users can't change themselves:
+
+```sql
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"demo": true}' where email = 'tester@example.com';
+```
+
+After the next sign-in, that account sees **Start with demo data** in onboarding and a **Demo mode** section in Settings. Every other account sees neither, and `load_demo_data` / `clear_demo_data` refuse them.
 
 ---
 
@@ -267,7 +276,7 @@ Before a release: `npm run typecheck && npm run lint && npm test && npm run test
 Migrations are in `supabase/migrations`. The tables follow the brief, with these additions:
 
 - `profiles.locale` (to read ambiguous printed dates), `profiles.onboarded_at`, `profiles.updated_at`
-- `food_items.is_demo` (so demo data can be removed again)
+- `food_items.is_demo` (so demo data can be removed again); demo accounts are marked with `app_metadata.demo`
 - `scans.attempts` (informational; the retry cap is enforced from `ai_usage`)
 - `scan_items.position`, `storage_instructions`, `notes`, `confidence`, and a `printed_date_type` enum
 - `ai_edit_log.source` also allows `'user'` and has a `reason` column, so the item history shows your own edits and quick *Used* / *Tossed* actions next to AI edits.
@@ -284,6 +293,12 @@ Migrations are in `supabase/migrations`. The tables follow the brief, with these
 - Shelf-life values are based on USDA FoodKeeper guidance (the conservative end of each range). They're estimates, so always trust the package and your senses.
 - Email reminders are not included yet; `profiles.notify_email` is ready for them.
 - Migrations that contain `delete` statements (`undo_rpc`, `account_and_demo`, `cleanup_jobs`) are kept in their own files, because the Supabase connector asks for confirmation before running them.
+
+## License
+
+The source code is released under the [MIT License](LICENSE.md).
+
+The FridgeWise name and logo are **not** covered by that license: `fridgewise-logo.png` and the images made from it (`public/icons/`, `public/brand/`, `public/favicon.ico`, `public/og-image.png` and `public/screenshots/`) are © 2026 mole-rat3832, all rights reserved. If you build on this code, please use your own name and logo (`npm run icons` regenerates every icon from a new `fridgewise-logo.png`).
 
 ## Credits
 

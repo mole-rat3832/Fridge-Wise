@@ -5,12 +5,14 @@ import { Logo } from '../components/AppShell';
 import { ErrorNote, Spinner } from '../components/ui';
 import { errorMessage, loadDemoData } from '../lib/api';
 import { browserTimeZone } from '../lib/dates';
+import { isDemoAccount } from '../lib/demo';
 import { enablePush, pushSupport } from '../lib/push';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
 
 export function Onboarding() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, user } = useAuth();
+  const demoAccount = isDemoAccount(user);
   const { refresh } = useItems();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -46,7 +48,7 @@ export function Onboarding() {
         locale: navigator.language || 'en-US',
         onboarded_at: new Date().toISOString(),
       });
-      if (demo) await loadDemoData();
+      if (demoAccount && demo) await loadDemoData();
       await refresh();
       navigate('/', { replace: true });
     } catch (err) {
@@ -118,7 +120,7 @@ export function Onboarding() {
     {
       icon: <Sparkles size={28} aria-hidden />,
       title: 'Ready to go',
-      body: (
+      body: demoAccount ? (
         <div className="space-y-3">
           <label className="flex items-start gap-3 rounded-xl border border-line p-3">
             <input type="checkbox" className="mt-1 h-5 w-5 accent-leaf" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
@@ -128,6 +130,8 @@ export function Onboarding() {
             </span>
           </label>
         </div>
+      ) : (
+        <p className="text-fg-2">Scan a grocery receipt or add a few items to get started. Everything you add is private to your account.</p>
       ),
     },
   ];
