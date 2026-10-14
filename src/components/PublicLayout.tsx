@@ -74,6 +74,28 @@ export function PublicLayout({ children }: { children: ReactNode }) {
               </a>
             </li>
           </ul>
+          <div className="flex flex-col gap-3 border-t border-line pt-5 text-sm text-fg-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+            <p>© 2026 FridgeWise · A student project</p>
+            <nav aria-label="Legal">
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 font-semibold text-fg">
+                <li>
+                  <Link to="/privacy" className="hover:underline">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="hover:underline">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/eula" className="hover:underline">
+                    EULA
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>

@@ -112,7 +112,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       signOut: async () => {
+        // Remove this account's offline copies from the device (matters on shared computers).
+        const id = session?.user.id;
         await supabase.auth.signOut();
+        if (id) {
+          try {
+            localStorage.removeItem(`fw-items:${id}`);
+            localStorage.removeItem(`fw-profile:${id}`);
+            for (const k of Object.keys(sessionStorage)) if (k.includes(id)) sessionStorage.removeItem(k);
+          } catch {
+            /* storage unavailable */
+          }
+        }
       },
     }),
     [session, profile, loading, recovering, today, timeZone, locale, loadProfile],

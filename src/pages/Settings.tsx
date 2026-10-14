@@ -529,6 +529,17 @@ export function Settings() {
             <Info size={18} aria-hidden data-anim="pop" /> About FridgeWise
           </Link>
         </div>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
+          <Link to="/privacy" className="underline underline-offset-2">
+            Privacy Policy
+          </Link>
+          <Link to="/terms" className="underline underline-offset-2">
+            Terms of Service
+          </Link>
+          <Link to="/eula" className="underline underline-offset-2">
+            EULA
+          </Link>
+        </p>
       </Section>
 
       <Section icon={<Database size={20} aria-hidden />} title="Your data">

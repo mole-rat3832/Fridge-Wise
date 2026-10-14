@@ -24,7 +24,14 @@
 FridgeWise is in **beta** (the header says so next to the name).
 
 **Find your way around**
-- **Homepage** at `/` for visitors: what FridgeWise is for, how it works, features, how the AI is kept in check, privacy and an FAQ. Signed-in users get their kitchen at `/` and can still read the homepage at `/about`.
+- **Homepage** at `/` for visitors, built to be played with:
+  - **Live demo** in the hero: a working mini kitchen. Tap ✓ or the bin to mark food used or tossed, with a running "saved" total, money popping out and Undo. Scan a sample receipt to watch the beam read it and items drop in, or tap a plain-language command to see items change. Once you've played, a sign-up card shows what you just saved.
+  - **Feature demos** in tabs: Talk (a preview, Confirm and Undo), Cook (pick ingredients and get three recipes), Remind (a lock-screen notification at 8:00 AM) and Track (bars that grow).
+  - **Waste calculator** and animated UNEP figures.
+  - A sticky sign-up bar on phones, a setup strip, AI and privacy cards, and an FAQ.
+  - Everything is scripted in the browser, with no sign-in and no AI calls. It respects reduced motion.
+  - Signed-in users get their kitchen at `/` and can still read the homepage at `/about`.
+- **Legal pages**: Privacy Policy (`/privacy`), Terms of Service (`/terms`) and EULA (`/eula`), linked in the footer, on the auth pages and in Settings → Help. Sign-up says that creating an account accepts them. They describe what the app actually does: what is collected, Gemini processing, providers, retention periods (photos 30 days, recipe ideas 14 days, quota rows 35 days), deletion and export, and food-safety and AI disclaimers. Signing out also clears the offline copy of your kitchen from the device.
 - **How to use FridgeWise** (`/guide`): the app's purpose and a step-by-step guide for new users, with small pictures of each screen and install instructions per device. Public, and shown inside the app when you're signed in.
 - **Explore tour**: the first time you open the app, a spotlight draws a ring around each part (scan, add, plain-language updates, the freshness lists, filters, every section of the menu, your daily limits, help) and explains what it does. Skip it at any step, use the arrow keys or Esc, and replay it from Settings → Help or the guide. Steps whose part isn't on screen (an empty kitchen, the phone layout) are left out.
 - **Your account and daily limits** at the bottom of the sidebar: your name above your email, and bars for scans and AI requests left today. Hover over (or tap) a bar for the reset time: midnight in your timezone, shown like *12:00 AM EDT*, and how long until then. Settings shows the same meters on phones.

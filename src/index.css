@@ -817,6 +817,65 @@
   animation: fw-float 6s ease-in-out infinite;
 }
 
+/* Homepage demos (components/home). Entrances use "backwards" fill; the one exit animation
+   (a row being removed) ends with the element unmounted. */
+@keyframes demo-leave {
+  to {
+    opacity: 0;
+    transform: translateX(40%);
+  }
+}
+@keyframes demo-pop-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -46px) scale(1);
+  }
+}
+@keyframes demo-flash {
+  0%,
+  40% {
+    background-color: color-mix(in srgb, var(--color-lime) 45%, transparent);
+  }
+}
+@keyframes demo-notify {
+  from {
+    opacity: 0;
+    transform: translateY(-120%) scale(0.96);
+  }
+}
+@keyframes demo-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, -6%) scale(1.08);
+  }
+}
+.demo-leave {
+  animation: demo-leave 300ms ease-in forwards;
+}
+.demo-pop-up {
+  animation: demo-pop-up 1.3s ease-out forwards;
+}
+.demo-flash {
+  animation: demo-flash 1.4s ease-out backwards;
+}
+.demo-notify {
+  animation: demo-notify 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+}
+.demo-drift {
+  animation: demo-drift 14s ease-in-out infinite;
+}
+
 /* Homepage sections fade up as they scroll into view, where the browser supports it. */
 @supports (animation-timeline: view()) {
   @keyframes scroll-reveal {
@@ -849,6 +908,7 @@
   .ready-pulse,
   .tour-glow,
   .float-loop,
+  .demo-drift,
   .scroll-reveal {
     animation: none !important;
   }
@@ -876,6 +936,7 @@
 :root[data-motion='reduce'] .ready-pulse,
 :root[data-motion='reduce'] .tour-glow,
 :root[data-motion='reduce'] .float-loop,
+:root[data-motion='reduce'] .demo-drift,
 :root[data-motion='reduce'] .scroll-reveal {
   animation: none !important;
 }

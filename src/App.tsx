@@ -16,6 +16,9 @@ import { ToastProvider } from './state/toast';
 // Pages other than the dashboard and sign-in are split into their own chunks (Stats pulls in the chart library).
 const AddItem = lazy(() => import('./pages/AddItem').then((m) => ({ default: m.AddItem })));
 const Guide = lazy(() => import('./pages/Guide').then((m) => ({ default: m.Guide })));
+const PrivacyPolicy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.PrivacyPolicy })));
+const TermsOfService = lazy(() => import('./pages/Legal').then((m) => ({ default: m.TermsOfService })));
+const Eula = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Eula })));
 const ItemDetail = lazy(() => import('./pages/ItemDetail').then((m) => ({ default: m.ItemDetail })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then((m) => ({ default: m.Onboarding })));
 const Recipes = lazy(() => import('./pages/Recipes').then((m) => ({ default: m.Recipes })));
@@ -121,6 +124,23 @@ function PublicOrApp({ children }: { children: ReactNode }) {
   );
 }
 
+/** Legal pages: always public, with the site header and footer. */
+function LegalRoute({ children }: { children: ReactNode }) {
+  return (
+    <PublicLayout>
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-16">
+            <Spinner size={28} />
+          </div>
+        }
+      >
+        {children}
+      </Suspense>
+    </PublicLayout>
+  );
+}
+
 function OnboardingRoute() {
   const { session, profile, loading } = useAuth();
   if (loading || (session && !profile)) return <FullPageSpinner />;
@@ -169,6 +189,9 @@ function AppRoutes() {
         }
       />
       <Route path="/guide" element={<PublicOrApp><Guide /></PublicOrApp>} />
+      <Route path="/privacy" element={<LegalRoute><PrivacyPolicy /></LegalRoute>} />
+      <Route path="/terms" element={<LegalRoute><TermsOfService /></LegalRoute>} />
+      <Route path="/eula" element={<LegalRoute><Eula /></LegalRoute>} />
       <Route path="/how-it-works" element={<Navigate to="/guide" replace />} />
       <Route path="/demo" element={<Navigate to="/guide" replace />} />
       <Route path="/scan" element={p(<ScanPage />)} />
