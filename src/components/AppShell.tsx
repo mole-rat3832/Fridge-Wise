@@ -64,8 +64,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 }`
               }
             >
-              <Icon size={20} aria-hidden />
-              {label}
+              {({ isActive }) => (
+                <>
+                  <Icon size={20} aria-hidden data-anim="bounce" className={isActive ? 'nav-pop' : undefined} />
+                  {label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -74,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {user?.email}
           </p>
           <button type="button" onClick={() => void signOut()} className="btn btn-ghost btn-sm mt-2 w-full justify-start text-fg-2">
-            <LogOut size={18} aria-hidden /> Sign out
+            <LogOut size={18} aria-hidden data-anim="nudge" /> Sign out
           </button>
         </div>
       </aside>
@@ -88,10 +92,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-1">
             <Link to="/add" className="btn btn-ghost btn-icon" aria-label="Add item">
-              <Plus size={22} />
+              <Plus size={22} data-anim="turn" />
             </Link>
             <Link to="/settings" className="btn btn-ghost btn-icon" aria-label="Settings">
-              <Settings size={22} />
+              <Settings size={22} data-anim="spin" />
             </Link>
           </div>
         </header>
@@ -125,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                           primary ? 'h-10 w-14 bg-accent text-on-accent' : isActive ? 'h-8 w-14 bg-tint' : 'h-8 w-14'
                         }`}
                       >
-                        <Icon size={primary ? 24 : 22} aria-hidden />
+                        <Icon size={primary ? 24 : 22} aria-hidden data-anim={primary ? 'pop' : 'bounce'} className={isActive && !primary ? 'nav-pop' : undefined} />
                       </span>
                       {label}
                     </>

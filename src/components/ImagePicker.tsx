@@ -47,10 +47,10 @@ export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void
       {touch ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button type="button" className="btn btn-primary min-h-16 text-base" disabled={disabled} onClick={() => cameraInput.current?.click()}>
-            <Camera size={22} aria-hidden /> Take a photo
+            <Camera size={22} aria-hidden data-anim="pop" /> Take a photo
           </button>
           <button type="button" className="btn btn-secondary min-h-16 text-base" disabled={disabled} onClick={() => libraryInput.current?.click()}>
-            <ImagePlus size={22} aria-hidden /> Choose from library
+            <ImagePlus size={22} aria-hidden data-anim="pop" /> Choose from library
           </button>
         </div>
       ) : (
@@ -65,16 +65,16 @@ export function ImagePicker({ onPick, disabled }: { onPick: (file: Blob) => void
             dragging ? 'border-fg bg-tint' : 'border-line'
           }`}
         >
-          <Upload size={32} className="text-fg-2" aria-hidden />
+          <Upload size={32} className="text-fg-2" aria-hidden data-anim="bounce" />
           <p className="font-semibold">Drag a photo here</p>
           <p className="text-sm text-fg-2">or</p>
           <div className="flex flex-wrap justify-center gap-2">
             <button type="button" className="btn btn-primary" disabled={disabled} onClick={() => libraryInput.current?.click()}>
-              <ImagePlus size={18} aria-hidden /> Choose a file
+              <ImagePlus size={18} aria-hidden data-anim="pop" /> Choose a file
             </button>
             {hasWebcamApi() && (
               <button type="button" className="btn btn-secondary" disabled={disabled} onClick={() => setWebcamOpen(true)}>
-                <Video size={18} aria-hidden /> Use webcam
+                <Video size={18} aria-hidden data-anim="pop" /> Use webcam
               </button>
             )}
           </div>
@@ -146,7 +146,7 @@ function WebcamCapture({ open, onClose, onCapture }: { open: boolean; onClose: (
             Cancel
           </button>
           <button type="button" className="btn btn-primary" onClick={capture} disabled={!stream} data-autofocus>
-            <Camera size={18} aria-hidden /> Capture
+            <Camera size={18} aria-hidden data-anim="pop" /> Capture
           </button>
         </>
       }

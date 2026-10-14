@@ -30,7 +30,7 @@ export function ItemRow({ item, today, reminderDaysBefore, locale, onUsed, onTos
       <Link to={`/item/${item.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl py-1 focus-visible:outline-offset-4">
         {!compact && (
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tint text-fg-2" aria-hidden>
-            <Icon size={20} />
+            <Icon size={20} data-anim="wiggle" />
           </span>
         )}
         <span className="min-w-0 flex-1">
@@ -70,7 +70,7 @@ export function ItemRow({ item, today, reminderDaysBefore, locale, onUsed, onTos
               aria-label={`Mark ${item.name} as used`}
               title="Used it"
             >
-              <Check size={18} />
+              <Check size={18} data-anim="pop" />
             </button>
           )}
           {onTossed && (
@@ -82,7 +82,7 @@ export function ItemRow({ item, today, reminderDaysBefore, locale, onUsed, onTos
               aria-label={`Mark ${item.name} as tossed`}
               title="Tossed it"
             >
-              <Trash size={18} />
+              <Trash size={18} data-anim="wiggle" />
             </button>
           )}
         </span>

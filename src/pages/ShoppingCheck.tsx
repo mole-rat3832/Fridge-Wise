@@ -42,7 +42,7 @@ export function ShoppingCheck() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader title="Do I have it?" subtitle="Check what's at home before you buy more. Separate items with commas or new lines." />
+      <PageHeader icon={<ShoppingBasket size={24} />} title="Do I have it?" subtitle="Check what's at home before you buy more. Separate items with commas or new lines." />
       <div className="card p-4 sm:p-5">
         <label htmlFor="check" className="label">
           Your shopping list
@@ -75,13 +75,13 @@ export function ShoppingCheck() {
                     <ShoppingBasket size={20} aria-hidden /> {term}: not at home
                   </p>
                   <Link to={`/add?name=${encodeURIComponent(term)}`} className="btn btn-secondary btn-sm">
-                    <Plus size={16} aria-hidden /> Add after shopping
+                    <Plus size={16} aria-hidden data-anim="turn" /> Add after shopping
                   </Link>
                 </div>
               ) : (
                 <>
                   <p className="flex items-center gap-2 font-semibold">
-                    <CircleCheck size={20} aria-hidden /> {term}: you have {found.length === 1 ? 'it' : `${found.length}`}
+                    <CircleCheck size={20} aria-hidden data-anim="pop" /> {term}: you have {found.length === 1 ? 'it' : `${found.length}`}
                   </p>
                   <ul className="mt-2 divide-y divide-line">
                     {found.map((it) => {

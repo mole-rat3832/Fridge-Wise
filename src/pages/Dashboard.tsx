@@ -1,9 +1,10 @@
-import { ClipboardCheck, Plus, Receipt, Refrigerator, ScanLine, Search, Sparkles } from 'lucide-react';
+import { ClipboardCheck, Hand, Plus, Receipt, Refrigerator, ScanLine, Search, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CommandBar } from '../components/CommandBar';
 import { ItemGroup } from '../components/ItemRow';
-import { EmptyState, FRESHNESS_LABEL, PageHeader, Spinner } from '../components/ui';
+import { EmptyState, FRESHNESS_ICON, FRESHNESS_LABEL, PageHeader, Spinner } from '../components/ui';
+import { isDemoAccount } from '../lib/demo';
 import { useOnline } from '../hooks/useOnline';
 import { useUndo } from '../hooks/useUndo';
 import { errorMessage, loadDemoData, recordUse, recordWaste } from '../lib/api';
@@ -38,7 +39,7 @@ function groupByName(items: FoodItem[]): FoodItem[][] {
 }
 
 export function Dashboard() {
-  const { profile, today, locale, timeZone } = useAuth();
+  const { profile, today, locale, timeZone, user } = useAuth();
   const { items, loading, cachedAt, refresh } = useItems();
   const online = useOnline();
   const toast = useToast();
@@ -130,6 +131,7 @@ export function Dashboard() {
     <div className="space-y-5">
       <PageHeader
         title={greeting}
+        icon={profile?.display_name ? <Hand size={24} data-anim="wave-once" /> : <Refrigerator size={24} />}
         subtitle={
           items.length === 0 && !loading ? (
             'Add food to start tracking it.'
@@ -143,10 +145,10 @@ export function Dashboard() {
         actions={
           <>
             <Link to="/scan" className="btn btn-primary">
-              <ScanLine size={18} aria-hidden /> Scan
+              <ScanLine size={18} aria-hidden data-anim="pop" /> Scan
             </Link>
             <Link to="/add" className="btn btn-secondary">
-              <Plus size={18} aria-hidden /> Add item
+              <Plus size={18} aria-hidden data-anim="turn" /> Add item
             </Link>
           </>
         }
@@ -158,7 +160,7 @@ export function Dashboard() {
 
       {pendingScans > 0 && online && (
         <Link to="/scan" className="card flex items-center gap-3 px-4 py-3 font-semibold hover:bg-tint">
-          <ClipboardCheck size={20} aria-hidden />
+          <ClipboardCheck size={20} aria-hidden data-anim="pop" />
           {pendingScans === 1 ? '1 scan is waiting for your review' : `${pendingScans} scans are waiting for your review`}
         </Link>
       )}
@@ -176,14 +178,16 @@ export function Dashboard() {
           actions={
             <>
               <Link to="/scan?type=receipt" className="btn btn-primary">
-                <Receipt size={18} aria-hidden /> Scan a receipt
+                <Receipt size={18} aria-hidden data-anim="wiggle" /> Scan a receipt
               </Link>
               <Link to="/add" className="btn btn-secondary">
-                <Plus size={18} aria-hidden /> Add by hand
+                <Plus size={18} aria-hidden data-anim="turn" /> Add by hand
               </Link>
-              <button type="button" className="btn btn-secondary" onClick={() => void demo()} disabled={loadingDemo || !online}>
-                {loadingDemo ? <Spinner label="Loading demo" /> : <Sparkles size={18} aria-hidden />} Load demo data
-              </button>
+              {isDemoAccount(user) && (
+                <button type="button" className="btn btn-secondary" onClick={() => void demo()} disabled={loadingDemo || !online}>
+                  {loadingDemo ? <Spinner label="Loading demo" /> : <Sparkles size={18} aria-hidden data-anim="pop" />} Load demo data
+                </button>
+              )}
             </>
           }
         >
@@ -246,7 +250,11 @@ export function Dashboard() {
                   style={{ animationDelay: `${index * 90}ms` }}
                 >
                   <header className="flex items-baseline justify-between gap-2 border-b border-line px-4 py-3">
-                    <h2 id={`section-${status}`} className="text-lg font-bold">
+                    <h2 id={`section-${status}`} className="flex items-center gap-2 text-lg font-bold">
+                      {(() => {
+                        const Icon = FRESHNESS_ICON[status];
+                        return <Icon size={20} aria-hidden data-anim={status === 'red' ? 'ring-loop' : undefined} />;
+                      })()}
                       {FRESHNESS_LABEL[status]} <span className="font-semibold text-fg-2">({count})</span>
                     </h2>
                     <p className="hidden text-sm text-fg-2 sm:block">{SECTION_HELP[status]}</p>

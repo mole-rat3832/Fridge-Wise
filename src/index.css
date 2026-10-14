@@ -83,7 +83,7 @@
   input,
   select,
   textarea {
-    font-size: 16px;
+    font-size: max(16px, 1rem);
   }
   button,
   a,
@@ -131,7 +131,7 @@
     gap: 0.5rem;
     min-height: 2.75rem; /* 44px touch target */
     padding: 0.5rem 1rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-control, 0.75rem);
     font-weight: 600;
     font-size: 0.95rem;
     line-height: 1.2;
@@ -186,7 +186,7 @@
     width: 100%;
     min-height: 2.75rem;
     padding: 0.55rem 0.75rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-control, 0.75rem);
     border: 1px solid var(--fw-line);
     background-color: var(--fw-surface);
     color: var(--fw-fg);
@@ -258,16 +258,199 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Motion. Entrances are short and only run once. Looping effects (AI working) carry
+   Appearance options (Settings > Appearance). Set as attributes on <html> by lib/theme.ts.
+   Every accent keeps at least 4.5:1 between the button and its text.
+   --------------------------------------------------------------------------- */
+:root[data-accent='lime'] {
+  --fw-accent: #cbff4d; /* ink text 16:1 */
+  --fw-on-accent: #141714;
+}
+:root[data-accent='steel'] {
+  --fw-accent: #69747c; /* white text 4.8:1 */
+  --fw-on-accent: #ffffff;
+}
+:root[data-accent='slate'] {
+  --fw-accent: #545454; /* white text 7.5:1 */
+  --fw-on-accent: #ffffff;
+}
+/* The pale accent gets an outline so buttons stay visible on white. */
+:root:not(.dark)[data-accent='lime'] .btn-primary {
+  box-shadow: inset 0 0 0 1px rgb(20 23 20 / 0.22);
+}
+
+:root[data-text='large'] {
+  font-size: 112.5%;
+}
+:root[data-text='xl'] {
+  font-size: 125%;
+}
+
+:root[data-contrast='high'] {
+  --fw-line: #545454;
+  --fw-fg-2: #141714;
+  --fw-fg-3: #3e4346;
+  --fw-tint: rgb(105 116 124 / 0.14);
+}
+:root.dark[data-contrast='high'] {
+  --fw-line: rgb(255 255 255 / 0.62);
+  --fw-fg-2: #ffffff;
+  --fw-fg-3: rgb(255 255 255 / 0.86);
+  --fw-tint: rgb(105 116 124 / 0.32);
+}
+:root[data-contrast='high'] :focus-visible {
+  outline-width: 3px;
+}
+
+:root[data-corners='square'] {
+  --radius-card: 0.375rem;
+  --radius-control: 0.375rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.625rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Icon motion. Put data-anim="..." on a lucide icon; it plays when its button or link is
+   hovered, focused or pressed. The *-loop variants play on their own (used sparingly).
+   --------------------------------------------------------------------------- */
+@keyframes ico-wiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-14deg); }
+  40% { transform: rotate(12deg); }
+  60% { transform: rotate(-8deg); }
+  80% { transform: rotate(4deg); }
+}
+@keyframes ico-pop {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.28); }
+}
+@keyframes ico-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ico-turn {
+  to { transform: rotate(90deg); }
+}
+@keyframes ico-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(16deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+@keyframes ico-fly {
+  0% { transform: none; opacity: 1; }
+  45% { transform: translate(6px, -6px); opacity: 0; }
+  46% { transform: translate(-6px, 6px); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes ico-drop {
+  0%, 100% { transform: none; }
+  50% { transform: translateY(3px); }
+}
+@keyframes ico-bounce {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(-4px); }
+  70% { transform: translateY(1px); }
+}
+@keyframes ico-twinkle {
+  0%, 72%, 100% { transform: scale(1) rotate(0); }
+  80% { transform: scale(1.25) rotate(12deg); }
+  90% { transform: scale(0.92) rotate(-6deg); }
+}
+@keyframes ico-wave {
+  0%, 60%, 100% { transform: rotate(0); }
+  10% { transform: rotate(16deg); }
+  20% { transform: rotate(-8deg); }
+  30% { transform: rotate(16deg); }
+  40% { transform: rotate(-4deg); }
+  50% { transform: rotate(10deg); }
+}
+@keyframes ico-nudge {
+  0%, 100% { transform: none; }
+  50% { transform: translateX(4px); }
+}
+@keyframes ico-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+
+[data-anim] {
+  transform-origin: center;
+}
+[data-anim='ring'],
+[data-anim='ring-loop'] {
+  transform-origin: 50% 12%;
+}
+[data-anim='wave'],
+[data-anim='wave-once'] {
+  transform-origin: 70% 85%;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='wiggle'] {
+  animation: ico-wiggle 0.6s ease-in-out;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='pop'] {
+  animation: ico-pop 0.4s ease-out;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='spin'] {
+  animation: ico-spin 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='turn'] {
+  animation: ico-turn 0.3s ease-out forwards;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='ring'] {
+  animation: ico-ring 0.8s ease-in-out;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='fly'] {
+  animation: ico-fly 0.6s ease-in-out;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='drop'] {
+  animation: ico-drop 0.5s ease-in-out 2;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='bounce'] {
+  animation: ico-bounce 0.5s ease-out;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='nudge'] {
+  animation: ico-nudge 0.5s ease-in-out 2;
+}
+:is(a, button, summary, label):is(:hover, :focus-visible, :active) [data-anim='wave'] {
+  animation: ico-wave 1.2s ease-in-out;
+}
+[data-anim='twinkle-loop'] {
+  animation: ico-twinkle 3.4s ease-in-out infinite;
+}
+[data-anim='ring-loop'] {
+  animation: ico-ring 1s ease-in-out 3;
+}
+[data-anim='wave-once'] {
+  animation: ico-wave 1.6s ease-in-out 0.4s 1 backwards;
+}
+[data-anim='wiggle-once'] {
+  animation: ico-wiggle 0.6s ease-in-out 0.15s 1 backwards;
+}
+[data-anim='pulse-loop'] {
+  animation: ico-pulse 1.2s ease-in-out infinite;
+}
+/* The icon of the page you just opened pops once (nav). */
+.nav-pop {
+  animation: ico-pop 0.45s ease-out;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion. Entrances are short and only run once. They use fill-mode "backwards", never "both":
+   a transform that stays on an element after its animation would turn it into the containing
+   block for fixed-position children (dialogs) and trap them inside the page. Looping effects (AI working) carry
    .motion-loop or are pseudo-elements listed below, so reduced motion switches them off.
    --------------------------------------------------------------------------- */
 @theme {
-  --animate-page-in: page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-rise: rise 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-sheet-in: sheet-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-fade-in: fade-in 200ms ease-out both;
-  --animate-toast-in: toast-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
-  --animate-pop: pop 380ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  --animate-page-in: page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  --animate-rise: rise 460ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  --animate-sheet-in: sheet-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  --animate-fade-in: fade-in 200ms ease-out backwards;
+  --animate-toast-in: toast-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards;
+  --animate-pop: pop 380ms cubic-bezier(0.3, 1.4, 0.5, 1) backwards;
+  --animate-float-once: float-once 1.4s ease-in-out backwards;
 
   @keyframes page-in {
     from { opacity: 0; transform: translateY(8px); }
@@ -288,6 +471,12 @@
   @keyframes toast-in {
     from { opacity: 0; transform: translateY(14px) scale(0.95); }
     to { opacity: 1; transform: none; }
+  }
+  @keyframes float-once {
+    0% { opacity: 0; transform: translateY(8px); }
+    40% { opacity: 1; transform: translateY(-4px); }
+    70% { transform: translateY(2px); }
+    100% { transform: none; }
   }
   @keyframes pop {
     from { opacity: 0; transform: scale(0.7); }
@@ -480,4 +669,27 @@
   .cook-chip {
     display: none;
   }
+}
+
+/* The same, when "Reduce motion" is switched on in Settings > Appearance. */
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+:root[data-motion='reduce'] .motion-loop,
+:root[data-motion='reduce'] .ai-glow::before,
+:root[data-motion='reduce'] .scan-frame::after,
+:root[data-motion='reduce'] .scan-spark,
+:root[data-motion='reduce'] .reveal-card::after,
+:root[data-motion='reduce'] .ready-pulse {
+  animation: none !important;
+}
+:root[data-motion='reduce'] .scan-frame::after,
+:root[data-motion='reduce'] .reveal-card::after,
+:root[data-motion='reduce'] .scan-spark,
+:root[data-motion='reduce'] .cook-chip {
+  display: none;
 }

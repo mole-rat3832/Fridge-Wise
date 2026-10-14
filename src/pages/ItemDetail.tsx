@@ -170,7 +170,7 @@ export function ItemDetail() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <Link to="/" className="inline-flex items-center gap-1 text-sm font-semibold text-fg-2 hover:text-fg">
-        <ArrowLeft size={16} aria-hidden /> Back
+        <ArrowLeft size={16} aria-hidden data-anim="bounce" /> Back
       </Link>
 
       <section className="card p-4 sm:p-6">
@@ -199,7 +199,7 @@ export function ItemDetail() {
           </div>
           {active && !editing && (
             <button type="button" className="btn btn-secondary btn-sm shrink-0" onClick={startEdit} disabled={!online} aria-label="Edit item">
-              <Pencil size={16} aria-hidden /> <span className="hidden sm:inline">Edit</span>
+              <Pencil size={16} aria-hidden data-anim="wiggle" /> <span className="hidden sm:inline">Edit</span>
             </button>
           )}
         </div>
@@ -274,13 +274,13 @@ export function ItemDetail() {
         {active && !editing && (
           <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
             <button type="button" className="btn btn-primary" disabled={busy || !online} onClick={() => void act(() => recordUse(current.id), `${current.name} marked as used.`)}>
-              <Check size={18} aria-hidden /> Used it all
+              <Check size={18} aria-hidden data-anim="pop" /> Used it all
             </button>
             <button type="button" className="btn btn-secondary" disabled={busy || !online} onClick={() => { setAmount(''); setUseSheet(true); }}>
               Used some
             </button>
             <button type="button" className="btn btn-secondary" disabled={busy || !online} onClick={() => void act(() => recordWaste(current.id), `${current.name} marked as tossed.`)}>
-              <Trash size={18} aria-hidden /> Tossed it
+              <Trash size={18} aria-hidden data-anim="wiggle" /> Tossed it
             </button>
             {!current.opened_at && (
               <button type="button" className="btn btn-secondary" disabled={busy || !online} onClick={() => void markOpened()}>
@@ -332,7 +332,7 @@ export function ItemDetail() {
                   ) : (
                     canUndo(b) && (
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => void undo(b.batchId)} disabled={!online}>
-                        <Undo2 size={16} aria-hidden /> Undo
+                        <Undo2 size={16} aria-hidden data-anim="spin" /> Undo
                       </button>
                     )
                   )}
@@ -348,7 +348,7 @@ export function ItemDetail() {
         <h2 className="font-bold">Delete item</h2>
         <p className="mt-1 text-sm text-fg-2">Only for mistakes. To keep your stats right, use "Used" or "Tossed" instead.</p>
         <button type="button" className="btn btn-secondary mt-3" onClick={() => setConfirmDelete(true)} disabled={!online}>
-          <Trash size={16} aria-hidden /> Delete
+          <Trash size={16} aria-hidden data-anim="wiggle" /> Delete
         </button>
       </section>
 

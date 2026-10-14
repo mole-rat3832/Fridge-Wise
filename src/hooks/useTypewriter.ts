@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
+/** True when the system asks for less motion, or "Reduce motion" is on in Settings > Appearance. */
 export function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  if (typeof window === 'undefined') return false;
+  return document.documentElement.dataset.motion === 'reduce' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 }
 
 /**

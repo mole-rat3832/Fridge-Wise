@@ -44,8 +44,9 @@
 **Works everywhere**
 - A Progressive Web App for Android, iOS, Windows, macOS and Linux: bottom navigation on phones, a sidebar on desktop, light and dark themes.
 - The app shell loads offline and says clearly when you're offline.
-- **Motion with meaning**: a cooking pot your expiring food drops into while recipes generate, a scanning beam over receipt photos, a glowing ring while the AI thinks, typed-out chat replies, and staggered entrances. With *reduce motion* turned on in the system settings, all loops stop.
-- Settings: notifications, timezone, date format, theme, CSV export, delete account.
+- **Motion with meaning**: a cooking pot your expiring food drops into while recipes generate, a scanning beam over receipt photos, a glowing ring while the AI thinks, typed-out chat replies, and staggered entrances. Icons react when you hover or tap them: trash wiggles, refresh spins, the bell rings, send flies off, plus turns, the greeting hand waves. With *reduce motion* on (system or in-app), all of it stops.
+- **Appearance**: light, dark or match device; four accent colors from the palette (Fresh green, Lime, Steel, Charcoal); text size up to 125%; high contrast; rounded or square corners; and an in-app *Reduce motion* switch. Saved per device and applied before the first paint, so nothing flashes.
+- Settings: notifications, timezone, date format, CSV export, delete account.
 - **Demo accounts** for judges and testers come with about 20 sample items and a few weeks of history. Regular accounts never see the demo controls.
 
 ---

@@ -1,4 +1,4 @@
-import { Check, ChevronRight, ClipboardCheck, Package, Receipt, RefreshCw, TriangleAlert } from 'lucide-react';
+import { Check, ChevronRight, ClipboardCheck, Package, Receipt, RefreshCw, ScanLine, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ImagePicker } from '../components/ImagePicker';
@@ -92,7 +92,7 @@ export function ScanPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader title="Scan" subtitle="Photograph a grocery receipt or a single product. You'll review everything before it's added." />
+      <PageHeader icon={<ScanLine size={24} data-anim="pop" />} title="Scan" subtitle="Photograph a grocery receipt or a single product. You'll review everything before it's added." />
 
       <div className="card space-y-5 p-4 sm:p-6">
         <div role="radiogroup" aria-label="What are you scanning?" className="grid grid-cols-2 gap-2 rounded-2xl bg-tint p-1">
@@ -112,7 +112,7 @@ export function ScanPage() {
               className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-3 text-center transition-colors ${type === t ? 'bg-surface shadow-sm' : 'text-fg-2'}`}
             >
               <span className="flex items-center gap-2 font-bold">
-                <Icon size={18} aria-hidden /> {label}
+                <Icon size={18} aria-hidden data-anim="pop" /> {label}
               </span>
               <span className="hidden text-xs text-fg-2 sm:block">{help}</span>
             </button>
@@ -134,7 +134,7 @@ export function ScanPage() {
                 <li key={s.key} className={`flex items-center gap-3 ${i > stepIndex ? 'text-fg-2' : 'font-semibold'}`}>
                   {i < stepIndex ? (
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-on-accent">
-                      <Check size={16} aria-hidden />
+                      <Check size={16} aria-hidden data-anim="pop" />
                     </span>
                   ) : i === stepIndex ? (
                     <span className="flex h-7 w-7 items-center justify-center">
@@ -159,7 +159,7 @@ export function ScanPage() {
             <div className="flex flex-wrap gap-2">
               {error.scanId && !error.limit && (
                 <button type="button" className="btn btn-secondary" onClick={() => void process(error.scanId!)}>
-                  <RefreshCw size={18} aria-hidden /> Try again
+                  <RefreshCw size={18} aria-hidden data-anim="spin" /> Try again
                 </button>
               )}
               <Link to="/add" className="btn btn-secondary">
@@ -181,14 +181,14 @@ export function ScanPage() {
             {recent.map((s) => (
               <li key={s.id}>
                 <Link to={`/scan/${s.id}`} className="flex items-center gap-3 py-3">
-                  {s.status === 'failed' ? <TriangleAlert size={20} className="text-danger" aria-hidden /> : <ClipboardCheck size={20} aria-hidden />}
+                  {s.status === 'failed' ? <TriangleAlert size={20} className="text-danger" aria-hidden /> : <ClipboardCheck size={20} aria-hidden data-anim="pop" />}
                   <span className="flex-1">
                     <span className="block font-semibold">
                       {s.type === 'receipt' ? s.store_name || 'Receipt' : 'Product'} · {s.status === 'needs_review' ? 'Ready to review' : s.status === 'failed' ? 'Could not be read' : 'Processing'}
                     </span>
                     <span className="text-sm text-fg-2">{formatDateTime(s.created_at, locale, timeZone)}</span>
                   </span>
-                  <ChevronRight size={18} aria-hidden />
+                  <ChevronRight size={18} aria-hidden data-anim="nudge" />
                 </Link>
               </li>
             ))}
