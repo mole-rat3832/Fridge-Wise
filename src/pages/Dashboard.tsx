@@ -236,13 +236,14 @@ export function Dashboard() {
           )}
 
           <div className="space-y-5">
-            {sections.map(({ status, groups, count }) =>
+            {sections.map(({ status, groups, count }, index) =>
               count === 0 ? null : (
                 <section
                   key={status}
                   ref={status === 'yellow' ? soonRef : undefined}
                   aria-labelledby={`section-${status}`}
-                  className={`card overflow-hidden border-l-4 ${SECTION_ACCENT[status]}`}
+                  className={`card overflow-hidden border-l-4 animate-rise ${SECTION_ACCENT[status]}`}
+                  style={{ animationDelay: `${index * 90}ms` }}
                 >
                   <header className="flex items-baseline justify-between gap-2 border-b border-line px-4 py-3">
                     <h2 id={`section-${status}`} className="text-lg font-bold">

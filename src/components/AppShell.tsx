@@ -1,6 +1,6 @@
 import { ChartColumn, ChefHat, House, LogOut, Plus, ScanLine, Search, Settings, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useOnline } from '../hooks/useOnline';
 import { useAuth } from '../state/auth';
 
@@ -44,6 +44,7 @@ export function OfflineBanner() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
+  const { pathname } = useLocation();
   return (
     <div className="min-h-dvh lg:flex">
       {/* Desktop sidebar */}
@@ -96,7 +97,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-6xl px-4 py-5 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] mb-nav sm:px-6 lg:mb-0 lg:px-10 lg:py-8">
-          {children}
+          {/* Keyed by path so each page fades in when you navigate. */}
+          <div key={pathname} className="animate-page-in">
+            {children}
+          </div>
         </main>
 
         {/* Phone / tablet bottom nav */}

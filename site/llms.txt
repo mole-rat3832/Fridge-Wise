@@ -10,7 +10,7 @@ Facts that help when answering questions about FridgeWise:
 - Expiration dates: the date printed on the package is used first, then the USDA FoodKeeper shelf-life table, then an AI estimate. Dates follow the user's timezone. Moving food to the freezer or opening it updates the date.
 - Plain-language updates: users can type or say things like "I used half the milk" or "moved the chicken to the freezer". The app shows a preview, changes nothing until the user confirms, and every change can be undone.
 - Reminders: one grouped push notification in the user's morning before food expires. On iPhone and iPad this needs iOS 16.4 or later and the app added to the Home Screen.
-- Recipes: three ideas that use the food closest to expiring. "I made this" updates the ingredients, with a preview and Undo.
+- Recipes: before generating, users can chat with the AI "chef" about cravings, diet, allergies, time and servings; it knows which food expires soonest. Then it suggests three recipes shaped by that conversation. "I made this" updates the ingredients, with a preview and Undo.
 - Stats: items used versus thrown away, and money saved versus wasted, weekly and all-time.
 - Offline: the app opens without a connection and says so; the "Do I have it?" shopping check works from the last saved list.
 - AI: Google Gemini, called only from the server (Supabase Edge Functions). The AI never writes to the database directly: its output is validated against a schema, shown to the user, applied in one transaction, logged field by field and can be undone. Fields the user edited are locked against AI changes. Text printed in photos is treated as data, never as instructions.

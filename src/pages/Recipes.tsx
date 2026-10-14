@@ -1,10 +1,13 @@
-import { Bookmark, BookmarkCheck, ChefHat, Clock, CookingPot, Sparkles, Users } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Bookmark, BookmarkCheck, ChefHat, Clock, CookingPot, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { CookingLoader } from '../components/ai-effects';
+import { RecipeChat } from '../components/RecipeChat';
 import { EmptyState, ErrorNote, FreshnessBadge, PageHeader, Sheet, Spinner } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
+import { prefersReducedMotion } from '../hooks/useTypewriter';
 import { useUndo } from '../hooks/useUndo';
-import { applyAiChanges, errorMessage, suggestRecipes } from '../lib/api';
+import { applyAiChanges, errorMessage, suggestRecipes, type ChatMessage } from '../lib/api';
 import { formatQuantity, UNIT_LABEL } from '../lib/catalog';
 import { expiryPhrase, freshness } from '../lib/dates';
 import { supabase } from '../lib/supabase';
@@ -16,7 +19,7 @@ import type { FoodItem, ProposedOperation, Recipe, RecipeIngredient } from '../t
 type Choice = 'all' | 'some' | 'none';
 
 export function Recipes() {
-  const { profile, today } = useAuth();
+  const { profile, today, user } = useAuth();
   const { items, refresh } = useItems();
   const toast = useToast();
   const undo = useUndo();
@@ -28,6 +31,12 @@ export function Recipes() {
   const [made, setMade] = useState<Recipe | null>(null);
   const [choices, setChoices] = useState<Record<string, { choice: Choice; amount: string }>>({});
   const [applying, setApplying] = useState(false);
+  // Recipes that just arrived get the reveal animation; the brief they were made for is shown above them.
+  const [fresh, setFresh] = useState<string[]>([]);
+  const [lastBrief, setLastBrief] = useState<string | null>(null);
+  const ideasRef = useRef<HTMLElement>(null);
+  const scrollToIdeas = useRef(false);
+  const loaderRef = useRef<HTMLDivElement>(null);
   const rdb = profile?.reminder_days_before ?? 2;
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
@@ -41,18 +50,44 @@ export function Recipes() {
     void load();
   }, [load]);
 
-  async function suggest() {
+  // The soonest-expiring items drop into the pot while recipes are generated.
+  const soonest = useMemo(
+    () =>
+      items
+        .filter((i) => i.expiration_date && i.expiration_date >= today)
+        .sort((a, b) => (a.expiration_date! < b.expiration_date! ? -1 : 1))
+        .slice(0, 5)
+        .map((i) => i.name),
+    [items, today],
+  );
+
+  async function suggest(conversation: ChatMessage[], brief: string | null) {
     setSuggesting(true);
     setError(null);
+    setLastBrief(brief);
     try {
-      await suggestRecipes(profile?.household_size ?? undefined);
+      const res = await suggestRecipes({ servings: profile?.household_size ?? undefined, conversation, brief });
+      setFresh(res.recipes.map((r) => r.id));
       await load();
+      scrollToIdeas.current = true;
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setSuggesting(false);
     }
   }
+
+  // Show the cooking animation as soon as generating starts (it sits below the chat).
+  useEffect(() => {
+    if (suggesting) loaderRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+  }, [suggesting]);
+
+  // Once the new ideas are on screen, bring them into view.
+  useEffect(() => {
+    if (suggesting || !scrollToIdeas.current) return;
+    scrollToIdeas.current = false;
+    ideasRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+  }, [suggesting, fresh]);
 
   async function toggleSave(r: Recipe) {
     const { error: err } = await supabase.from('recipes').update({ saved: !r.saved }).eq('id', r.id);
@@ -113,8 +148,13 @@ export function Recipes() {
   function renderCard(r: Recipe) {
     const ingredients = (r.ingredients as unknown as RecipeIngredient[]) ?? [];
     const steps = (r.steps as unknown as string[]) ?? [];
+    const reveal = fresh.indexOf(r.id);
     return (
-      <article key={r.id} className="card flex flex-col p-4 sm:p-5">
+      <article
+        key={r.id}
+        className={`card flex flex-col p-4 sm:p-5 ${reveal >= 0 ? 'reveal-card' : ''}`}
+        style={reveal >= 0 ? ({ '--fw-delay': `${reveal * 160}ms` } as CSSProperties) : undefined}
+      >
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-bold leading-snug">{r.title}</h3>
           <button type="button" className="btn btn-ghost btn-icon -mr-2 -mt-1" onClick={() => void toggleSave(r)} aria-pressed={r.saved} aria-label={r.saved ? 'Remove from saved' : 'Save recipe'}>
@@ -165,16 +205,7 @@ export function Recipes() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Recipes"
-        subtitle="Ideas that use the food closest to expiring."
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => void suggest()} disabled={suggesting || !online || items.length === 0}>
-            {suggesting ? <Spinner label="Thinking" /> : <Sparkles size={18} aria-hidden />} {suggestions.length ? 'New ideas' : 'Suggest 3 recipes'}
-          </button>
-        }
-      />
-      {error && <ErrorNote>{error}</ErrorNote>}
+      <PageHeader title="Recipes" subtitle="Ideas that use the food closest to expiring. Tell the chef what you feel like first, or just generate." />
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -186,16 +217,30 @@ export function Recipes() {
         </EmptyState>
       ) : (
         <>
-          {suggestions.length === 0 && saved.length === 0 && (
-            <EmptyState icon={<ChefHat size={40} />} title="What should I cook?">
-              Tap “Suggest 3 recipes” to get ideas using what's about to expire.
-            </EmptyState>
+          {user && items.length > 0 && (
+            <RecipeChat
+              userId={user.id}
+              items={items}
+              today={today}
+              servings={profile?.household_size ?? undefined}
+              online={online}
+              generating={suggesting}
+              onGenerate={(conversation, brief) => void suggest(conversation, brief)}
+            />
           )}
-          {suggestions.length > 0 && (
-            <section aria-labelledby="ideas">
-              <h2 id="ideas" className="mb-3 text-lg font-bold">
+          {error && <ErrorNote>{error}</ErrorNote>}
+          {suggesting && (
+            <div ref={loaderRef} className="scroll-mt-20 lg:scroll-mt-6">
+              <CookingLoader ingredients={soonest} brief={lastBrief} />
+            </div>
+          )}
+          {!suggesting && suggestions.length > 0 && (
+            <section aria-labelledby="ideas" ref={ideasRef} className="scroll-mt-20 lg:scroll-mt-6">
+              <h2 id="ideas" className="mb-1 text-lg font-bold">
                 Ideas for today
               </h2>
+              {lastBrief && fresh.length > 0 && <p className="mb-3 text-sm text-fg-2">Based on: {lastBrief}</p>}
+              {!(lastBrief && fresh.length > 0) && <div className="mb-3" />}
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {suggestions.map(renderCard)}
               </div>

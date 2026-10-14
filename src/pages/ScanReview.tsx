@@ -286,12 +286,13 @@ export function ScanReview() {
       )}
 
       <ul className="space-y-3">
-        {items.map((si) => {
+        {items.map((si, index) => {
           const r = rows[si.id];
           if (!r) return null;
           const pid = (k: string) => `${si.id}-${k}`;
           return (
-            <li key={si.id} className={`card p-4 sm:p-5 ${r.include ? '' : 'bg-tint'}`}>
+            // Lines appear one after another, as if the AI is still reading them out.
+            <li key={si.id} className={`card p-4 sm:p-5 animate-rise ${r.include ? '' : 'bg-tint'}`} style={{ animationDelay: `${Math.min(index, 12) * 70}ms` }}>
               <div className="flex items-start gap-3">
                 <input
                   id={pid('include')}

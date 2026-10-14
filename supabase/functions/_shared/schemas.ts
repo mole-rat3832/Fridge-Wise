@@ -277,3 +277,30 @@ export const Recipe = z.object({
 
 export const Recipes = z.object({ recipes: z.array(Recipe).min(1).max(3) });
 export type RecipesOutput = z.infer<typeof Recipes>;
+
+// ---------------------------------------------------------------------------
+// Recipe chat: a short conversation before generating ideas
+// ---------------------------------------------------------------------------
+export const recipeChatJsonSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string', description: 'Your answer to the user: 1 to 3 short, friendly sentences. At most one question.' },
+    quick_replies: {
+      type: 'array',
+      maxItems: 4,
+      description: '2 to 4 short answers the user could tap next (each under 40 characters), written from the user\'s point of view.',
+      items: { type: 'string' },
+    },
+    brief: nullableString('One line that sums up everything the user wants so far (diet, allergies, cuisine, time, equipment, servings, items to use). Null if nothing yet.'),
+    ready: { type: 'boolean', description: 'True when you know enough to generate good recipe ideas.' },
+  },
+  required: ['reply', 'quick_replies', 'brief', 'ready'],
+};
+
+export const RecipeChat = z.object({
+  reply: z.string().min(1).max(1200),
+  quick_replies: z.array(z.string().max(120)).max(8),
+  brief: z.string().max(600).nullable(),
+  ready: z.boolean(),
+});
+export type RecipeChatOutput = z.infer<typeof RecipeChat>;
