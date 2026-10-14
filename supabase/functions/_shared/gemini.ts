@@ -1,8 +1,11 @@
 // Minimal Gemini client for the edge functions (REST generateContent).
 //
 // * Structured output: generationConfig.responseFormat.text = {mimeType: APPLICATION_JSON, schema}
-//   (the current format; responseSchema is deprecated). If the API rejects that field we retry
-//   once with the older responseMimeType + responseJsonSchema pair.
+//   (the current format; responseSchema is deprecated). If the API rejects a request as invalid
+//   (400), we step down, one request each: the older responseMimeType + responseJsonSchema pair,
+//   then a simplified schema (no number ranges, length limits or enums), then plain JSON mode
+//   with the schema in the prompt. Rejected requests are not billed, Zod still validates the
+//   answer, and the log says which step worked and what Google objected to.
 // * Low temperature (0.15). Gemini 3.6+ ignores temperature, which is harmless.
 // * Images go inline as base64.
 // * Every response is parsed and validated with Zod. Invalid JSON or a schema mismatch is
@@ -53,15 +56,50 @@ function supportsThinkingLevel(model: string): boolean {
   return m !== null && Number(m[1]) >= 3;
 }
 
-function buildBody(opts: GenerateOptions<z.ZodType>, legacy: boolean, model: string, extraNote?: string) {
-  const parts: Part[] = extraNote ? [...opts.parts, { text: extraNote }] : opts.parts;
+/** How the JSON schema is sent, from the preferred way to the most forgiving. */
+export const MODES = ['format', 'legacy', 'simple', 'prompt'] as const;
+export type Mode = (typeof MODES)[number];
+
+const STRICT_KEYWORDS = new Set(['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'minItems', 'maxItems', 'minLength', 'maxLength', 'pattern', 'format', 'enum']);
+
+/**
+ * A plainer copy of a schema for models that reject some JSON Schema keywords: drops ranges,
+ * length limits and patterns, and turns enums into a sentence in the description. Zod still
+ * checks every one of those rules on the answer.
+ */
+export function simplifySchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(simplifySchema);
+  if (!schema || typeof schema !== 'object') return schema;
+  const src = schema as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(src)) {
+    if (STRICT_KEYWORDS.has(key)) continue;
+    if (key === 'properties' && value && typeof value === 'object') {
+      out.properties = Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([name, sub]) => [name, simplifySchema(sub)]));
+    } else {
+      out[key] = simplifySchema(value);
+    }
+  }
+  if (Array.isArray(src.enum)) {
+    const choices = `One of: ${src.enum.map((v) => JSON.stringify(v)).join(', ')}.`;
+    out.description = typeof src.description === 'string' ? `${src.description} ${choices}` : choices;
+  }
+  return out;
+}
+
+export function buildBody(opts: GenerateOptions<z.ZodType>, mode: Mode, model: string, extraNote?: string) {
+  const parts: Part[] = extraNote ? [...opts.parts, { text: extraNote }] : [...opts.parts];
   const generationConfig: Record<string, unknown> = { temperature: 0.15, candidateCount: 1, maxOutputTokens: 8192 };
-  if (legacy) {
-    generationConfig.responseMimeType = 'application/json';
-    generationConfig.responseJsonSchema = opts.jsonSchema;
-  } else {
+  if (mode === 'format') {
     generationConfig.responseFormat = { text: { mimeType: 'APPLICATION_JSON', schema: opts.jsonSchema } };
     if (supportsThinkingLevel(model)) generationConfig.thinkingConfig = { thinkingLevel: 'LOW' };
+  } else {
+    generationConfig.responseMimeType = 'application/json';
+    if (mode === 'legacy') generationConfig.responseJsonSchema = opts.jsonSchema;
+    if (mode === 'simple') generationConfig.responseJsonSchema = simplifySchema(opts.jsonSchema);
+    if (mode === 'prompt') {
+      parts.push({ text: `Answer with one JSON object that matches this JSON Schema exactly (all listed limits and choices apply):\n${JSON.stringify(opts.jsonSchema)}` });
+    }
   }
   return {
     systemInstruction: { parts: [{ text: opts.system }] },
@@ -76,7 +114,13 @@ interface GeminiResponse {
     finishReason?: string;
   }>;
   promptFeedback?: { blockReason?: string };
-  error?: { code?: number; message?: string; status?: string };
+  error?: { code?: number; message?: string; status?: string; details?: unknown };
+}
+
+/** Google's reason for rejecting a request, for the function log (never includes the key). */
+function rejection(json: GeminiResponse): string {
+  const details = json.error?.details ? ` ${JSON.stringify(json.error.details).slice(0, 900)}` : '';
+  return `${json.error?.status ?? ''} ${json.error?.message ?? 'no message'}${details}`.trim();
 }
 
 async function post(model: string, key: string, body: unknown, timeoutMs: number): Promise<{ status: number; json: GeminiResponse }> {
@@ -127,7 +171,7 @@ export async function generateJson<T extends z.ZodType>(opts: GenerateOptions<T>
   const model = geminiModel();
   const timeoutMs = opts.timeoutMs ?? 90_000;
 
-  let legacy = false;
+  let mode: Mode = 'format';
   let lastRaw: unknown = null;
   let lastProblem = '';
   let attempts = 0;
@@ -138,17 +182,20 @@ export async function generateJson<T extends z.ZodType>(opts: GenerateOptions<T>
       ? undefined
       : `Your previous answer was rejected (${lastProblem.slice(0, 300)}). Reply again with JSON that matches the schema exactly.`;
 
-    let response = await post(model, key, buildBody(opts as GenerateOptions<z.ZodType>, legacy, model, note), timeoutMs);
+    let response = await post(model, key, buildBody(opts as GenerateOptions<z.ZodType>, mode, model, note), timeoutMs);
     attempts++;
 
-    // Older models or API versions may not know responseFormat / thinkingLevel: switch format once.
-    if (response.status === 400 && !legacy) {
-      const msg = (response.json.error?.message ?? '').toLowerCase();
-      if (/response_?format|responseformat|thinking|unknown name|invalid json payload|cannot find field/.test(msg)) {
-        legacy = true;
-        response = await post(model, key, buildBody(opts as GenerateOptions<z.ZodType>, legacy, model, note), timeoutMs);
-        attempts++;
-      }
+    // Invalid request (often a schema keyword or field this model or API version rejects):
+    // step down to a more forgiving way of asking, one request per step.
+    while (response.status === 400 && MODES.indexOf(mode) < MODES.length - 1) {
+      const why = rejection(response.json);
+      if (/api key|api_key_invalid/i.test(why)) throw new AiConfigError('The Gemini API key was rejected.');
+      const next = MODES[MODES.indexOf(mode) + 1];
+      console.warn(`Gemini rejected the request in "${mode}" mode (${why}); retrying in "${next}" mode.`);
+      mode = next;
+      response = await post(model, key, buildBody(opts as GenerateOptions<z.ZodType>, mode, model, note), timeoutMs);
+      attempts++;
+      if (response.status < 400) console.warn(`Gemini accepted the request in "${mode}" mode.`);
     }
 
     if (response.status === 429 || response.status === 503) {
@@ -161,7 +208,7 @@ export async function generateJson<T extends z.ZodType>(opts: GenerateOptions<T>
       throw new AiConfigError(`The Gemini model "${model}" was not found. Check the GEMINI_MODEL secret.`);
     }
     if (response.status >= 400) {
-      throw new AiOutputError(`Gemini error ${response.status}: ${response.json.error?.message ?? 'unknown'}`, response.json);
+      throw new AiOutputError(`Gemini error ${response.status}: ${rejection(response.json)}`, response.json);
     }
 
     const text = extractText(response.json);
