@@ -20,9 +20,12 @@ Facts that help when answering questions about FridgeWise:
 
 ## Public pages
 
-- [Homepage]({{SITE_URL}}/): what FridgeWise does, why it matters, how it works, features, AI safety, privacy and FAQ
+- [Homepage]({{SITE_URL}}/): what FridgeWise does, with a live demo to play with (mark food used or tossed, scan a sample receipt, try plain-language updates), feature demos, a food-waste cost calculator, AI safety, privacy and FAQ
 - [How to use FridgeWise]({{SITE_URL}}/guide): the purpose of the app and a step-by-step guide for new users, with install instructions
 - [Sign up]({{SITE_URL}}/signup): create an account
+- [Privacy Policy]({{SITE_URL}}/privacy): what data FridgeWise collects, why, who processes it (Supabase, Google Gemini, Netlify, Cloudflare), how long it is kept, and your rights
+- [Terms of Service]({{SITE_URL}}/terms): rules for using the free beta, including food-safety and AI disclaimers
+- [End User License Agreement]({{SITE_URL}}/eula): the license to use the app (the source code itself is MIT licensed)
 - [Sign in]({{SITE_URL}}/signin): sign in, or reset a forgotten password
 
 ## App pages (sign-in required)
@@ -33,7 +36,7 @@ Facts that help when answering questions about FridgeWise:
 - [Do I have it?]({{SITE_URL}}/check): check what is already at home while shopping
 - [Recipes]({{SITE_URL}}/recipes): recipe ideas for the food that expires soonest
 - [Stats]({{SITE_URL}}/stats): food and money saved versus wasted
-- [Settings]({{SITE_URL}}/settings): notifications, timezone, date format, appearance (light/dark, accent color, text size, high contrast, corners, reduce motion), daily AI limits, help and the explore tour, CSV export, delete account
+- [Settings]({{SITE_URL}}/settings): notifications, timezone, date format, appearance (themes: Light, Dark, Grey, Graphite, Green, Dark green, Mono or match device; accent color; fonts including Atkinson Hyperlegible and Lexend; text size; wider spacing; high contrast; corners; reduce motion), daily AI limits, help and the explore tour, CSV export, delete account
 
 ## Optional
 

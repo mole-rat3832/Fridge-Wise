@@ -30,6 +30,14 @@ function AuthLayout({ title, subtitle, children, footer }: { title: string; subt
           <Link to="/guide" className="underline underline-offset-2 hover:text-fg">
             How to use it
           </Link>
+          <span aria-hidden> · </span>
+          <Link to="/privacy" className="underline underline-offset-2 hover:text-fg">
+            Privacy
+          </Link>
+          <span aria-hidden> · </span>
+          <Link to="/terms" className="underline underline-offset-2 hover:text-fg">
+            Terms
+          </Link>
         </p>
       </div>
     </div>
@@ -226,6 +234,21 @@ export function SignUp() {
         <button type="submit" className="btn btn-primary w-full" disabled={busy || !captchaReady}>
           {busy ? <Spinner label="Creating account" /> : 'Create account'}
         </button>
+        <p className="text-center text-xs text-fg-2">
+          By creating an account you agree to the{' '}
+          <Link to="/terms" className="font-semibold text-fg underline underline-offset-2">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/eula" className="font-semibold text-fg underline underline-offset-2">
+            EULA
+          </Link>
+          , and confirm you have read the{' '}
+          <Link to="/privacy" className="font-semibold text-fg underline underline-offset-2">
+            Privacy Policy
+          </Link>
+          . You must be 13 or older.
+        </p>
       </form>
     </AuthLayout>
   );

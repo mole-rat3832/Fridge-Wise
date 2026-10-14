@@ -2,10 +2,13 @@
 // FridgeWise service worker:
 //  * precaches the app shell so the app opens offline (the UI then shows an offline banner)
 //  * serves index.html for every navigation (single-page app)
+//  * keeps a font once it has been used, so a chosen font also works offline
 //  * shows Web Push reminders and opens the app when one is tapped
 import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+import { ExpirationPlugin } from 'workbox-expiration';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> };
 
@@ -15,6 +18,12 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')));
+
+// Font files are not precached (most people never pick one); cache each the first time it's used.
+registerRoute(
+  ({ request, sameOrigin }) => sameOrigin && request.destination === 'font',
+  new CacheFirst({ cacheName: 'fw-fonts', plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 })] }),
+);
 
 interface PushPayload {
   title?: string;

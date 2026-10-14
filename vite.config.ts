@@ -9,7 +9,7 @@ const DESCRIPTION = 'Track the food you have at home and use it before it goes b
 
 // Pages that only make sense when signed in. They are kept out of search results.
 const PRIVATE_PATHS = ['/scan', '/add', '/item/', '/check', '/recipes', '/stats', '/settings', '/onboarding', '/reset-password'];
-const PUBLIC_PATHS = ['/', '/guide', '/signup', '/signin'];
+const PUBLIC_PATHS = ['/', '/guide', '/signup', '/signin', '/privacy', '/terms', '/eula'];
 
 /**
  * Site files that depend on where the build is deployed:

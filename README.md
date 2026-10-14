@@ -24,7 +24,14 @@
 FridgeWise is in **beta** (the header says so next to the name).
 
 **Find your way around**
-- **Homepage** at `/` for visitors: what FridgeWise is for, how it works, features, how the AI is kept in check, privacy and an FAQ. Signed-in users get their kitchen at `/` and can still read the homepage at `/about`.
+- **Homepage** at `/` for visitors, built to be played with:
+  - **Live demo** in the hero: a working mini kitchen. Tap ✓ or the bin to mark food used or tossed, with a running "saved" total, money popping out and Undo. Scan a sample receipt to watch the beam read it and items drop in, or tap a plain-language command to see items change. Once you've played, a sign-up card shows what you just saved.
+  - **Feature demos** in tabs: Talk (a preview, Confirm and Undo), Cook (pick ingredients and get three recipes), Remind (a lock-screen notification at 8:00 AM) and Track (bars that grow).
+  - **Waste calculator** and animated UNEP figures.
+  - A sticky sign-up bar on phones, a setup strip, AI and privacy cards, and an FAQ.
+  - Everything is scripted in the browser, with no sign-in and no AI calls. It respects reduced motion.
+  - Signed-in users get their kitchen at `/` and can still read the homepage at `/about`.
+- **Legal pages**: Privacy Policy (`/privacy`), Terms of Service (`/terms`) and EULA (`/eula`), linked in the footer, on the auth pages and in Settings → Help. Sign-up says that creating an account accepts them. They describe what the app actually does: what is collected, Gemini processing, providers, retention periods (photos 30 days, recipe ideas 14 days, quota rows 35 days), deletion and export, and food-safety and AI disclaimers. Signing out also clears the offline copy of your kitchen from the device.
 - **How to use FridgeWise** (`/guide`): the app's purpose and a step-by-step guide for new users, with small pictures of each screen and install instructions per device. Public, and shown inside the app when you're signed in.
 - **Explore tour**: the first time you open the app, a spotlight draws a ring around each part (scan, add, plain-language updates, the freshness lists, filters, every section of the menu, your daily limits, help) and explains what it does. Skip it at any step, use the arrow keys or Esc, and replay it from Settings → Help or the guide. Steps whose part isn't on screen (an empty kitchen, the phone layout) are left out.
 - **Your account and daily limits** at the bottom of the sidebar: your name above your email, and bars for scans and AI requests left today. Hover over (or tap) a bar for the reset time: midnight in your timezone, shown like *12:00 AM EDT*, and how long until then. Settings shows the same meters on phones.
@@ -53,7 +60,10 @@ FridgeWise is in **beta** (the header says so next to the name).
 - A Progressive Web App for Android, iOS, Windows, macOS and Linux: bottom navigation on phones, a sidebar on desktop, light and dark themes.
 - The app shell loads offline and says clearly when you're offline.
 - **Motion with meaning**: a cooking pot your expiring food drops into while recipes generate, a scanning beam over receipt photos, a glowing ring while the AI thinks, typed-out chat replies, and staggered entrances. Icons react when you hover or tap them: trash wiggles, refresh spins, the bell rings, send flies off, plus turns, the greeting hand waves. With *reduce motion* on (system or in-app), all of it stops.
-- **Appearance**: light, dark or match device; four accent colors from the palette (Fresh green, Lime, Steel, Charcoal); text size up to 125%; high contrast; rounded or square corners; and an in-app *Reduce motion* switch. Saved per device and applied before the first paint, so nothing flashes.
+- **Themes**: match device, Light, Dark, Grey, Graphite (dark grey), Green, Dark green and Mono (black, white and greys; only errors stay red). Each is a tint or shade of the palette with its own default accent, and every text color is checked for at least 4.5:1 contrast on its page, cards and tinted areas. Dark themes also turn on the dark styles, charts follow the theme, and the browser toolbar color matches it.
+- **Accent color**: the theme's own, or Fresh green, Lime, Steel or Charcoal.
+- **Text and font**: six fonts, each previewed in itself. They are the system font, Nunito (rounded), Atkinson Hyperlegible (designed for low vision), Lexend (made for easier reading), Serif and Monospace. The three web fonts are bundled, not loaded from a font service; they download only when shown or picked, and then work offline. There's also text size up to 125% and *Wider spacing* (more room between letters, words and lines). The logo and the header buttons keep a fixed size, and long words wrap, so every page fits a 360 px phone with any font at the largest size.
+- **More appearance options**: high contrast, rounded or square corners, and an in-app *Reduce motion* switch. Everything is saved per device and applied before the first paint, so nothing flashes.
 - Settings: notifications, timezone, date format, CSV export, delete account.
 - **Demo accounts** for judges and testers come with about 20 sample items and a few weeks of history. Regular accounts never see the demo controls.
 
@@ -125,7 +135,7 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 - **No secrets in the repo.** The Gemini API key and the Turnstile secret key are entered in the Supabase dashboard. The cron secret is generated inside Postgres and the Web Push keys by `send-reminders`; both are kept in Supabase Vault.
 - **Bot protection.** Cloudflare Turnstile on sign up, sign in and password reset, checked by Supabase Auth.
 - **Photos** are in a private bucket, readable only from the owner's folder, and deleted after 30 days.
-- **Strict browser headers** from `netlify.toml`: a Content Security Policy that allows only this site, Supabase and Turnstile, plus `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy and a Permissions-Policy that allows only the camera.
+- **Strict browser headers** from `netlify.toml`: a Content Security Policy that allows only this site, Supabase and Turnstile, plus `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy and a Permissions-Policy that allows only the camera (scanning) and the microphone (voice input), for this site only.
 - **Your data is yours.** Export items and history as CSV, or delete the account and everything in it from Settings.
 
 ---
@@ -313,4 +323,4 @@ The FridgeWise name and logo are **not** covered by that license: `fridgewise-lo
 
 ## Credits
 
-Built for a school AI competition. Shelf-life data from [USDA FoodKeeper](https://www.foodsafety.gov/keep-food-safe/foodkeeper-app). Powered by [Supabase](https://supabase.com), [Google Gemini](https://ai.google.dev), [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) and [Netlify](https://www.netlify.com). Icons by [Lucide](https://lucide.dev).
+Built for a school AI competition. Shelf-life data from [USDA FoodKeeper](https://www.foodsafety.gov/keep-food-safe/foodkeeper-app). Powered by [Supabase](https://supabase.com), [Google Gemini](https://ai.google.dev), [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) and [Netlify](https://www.netlify.com). Icons by [Lucide](https://lucide.dev). Fonts [Nunito](https://fonts.google.com/specimen/Nunito), [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/) (Braille Institute) and [Lexend](https://www.lexend.com), all under the SIL Open Font License, bundled with [Fontsource](https://fontsource.org).

@@ -58,14 +58,14 @@ function ScanDemo() {
         {rows.map((r) => (
           <li
             key={r.name}
-            className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-sm ${r.check ? 'border-lime ring-2 ring-lime/60' : 'border-line'} ${r.on ? '' : 'opacity-60'}`}
+            className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-sm ${r.check ? 'border-lime ring-2 ring-lime/60' : 'border-line'} ${r.on ? '' : 'opacity-60'}`}
           >
             <span
               className={`flex h-5 w-5 items-center justify-center rounded-md border text-[0.7rem] font-bold ${r.on ? 'border-transparent bg-accent text-on-accent' : 'border-line'}`}
             >
               {r.on ? '✓' : ''}
             </span>
-            <span className="flex-1 font-semibold">{r.name}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{r.name}</span>
             {r.check && <span className="badge badge-yellow">Check this</span>}
             {r.date && <span className="text-fg-2">{r.date}</span>}
           </li>
@@ -83,12 +83,12 @@ function ListDemo() {
         <FreshnessBadge status="yellow" />
         <FreshnessBadge status="green" />
       </div>
-      <div className="mt-3 flex items-center gap-3 rounded-xl border border-line border-l-4 border-l-expired px-3 py-2 text-sm">
+      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-line border-l-4 border-l-expired px-3 py-2 text-sm">
         {(() => {
           const Icon = FRESHNESS_ICON.red;
           return <Icon size={18} />;
         })()}
-        <span className="flex-1">
+        <span className="min-w-0 flex-1">
           <span className="font-semibold">Greek yogurt</span>
           <span className="block text-fg-2">Expires today · Fridge</span>
         </span>
@@ -104,7 +104,7 @@ function CommandDemo() {
     <Demo label="Example: a plain-language update and its preview">
       <div className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm">
         <MessageSquareText size={16} className="text-fg-2" />
-        <span className="flex-1">I used half the milk and moved the chicken to the freezer</span>
+        <span className="min-w-0 flex-1">I used half the milk and moved the chicken to the freezer</span>
         <Mic size={16} className="text-fg-2" />
       </div>
       <div className="mt-2 rounded-xl bg-tint p-3 text-sm">
@@ -113,7 +113,7 @@ function CommandDemo() {
           <li>Milk: 1 L → 0.5 L</li>
           <li>Chicken thighs: Fridge → Freezer, keeps until Jan 12</li>
         </ul>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           <span className="btn btn-primary btn-sm">Confirm</span>
           <span className="btn btn-ghost btn-sm">Cancel</span>
         </div>
@@ -299,7 +299,7 @@ export function Guide() {
 
       <nav aria-label="Steps in this guide" className="flex flex-wrap gap-2">
         {STEPS.map((s, i) => (
-          <a key={s.id} href={`#${s.id}`} className="chip">
+          <a key={s.id} href={`#${s.id}`} className="chip max-w-full whitespace-normal text-left">
             {i + 1}. {s.title}
           </a>
         ))}

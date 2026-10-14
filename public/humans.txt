@@ -9,6 +9,7 @@
 /* SITE */
   Standards: HTML, CSS, TypeScript, Progressive Web App, Web Push
   Components: React, Vite, Tailwind CSS, React Router, Recharts, lucide icons
+  Fonts: Nunito, Atkinson Hyperlegible (Braille Institute), Lexend; SIL Open Font License, via Fontsource
   Backend: Supabase (Postgres with Row Level Security, Auth, Storage, Edge Functions, pg_cron)
   AI: Google Gemini (called only from Supabase Edge Functions)
   Bot protection: Cloudflare Turnstile

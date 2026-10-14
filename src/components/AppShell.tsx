@@ -5,13 +5,16 @@ import { useOnline } from '../hooks/useOnline';
 import { useAuth } from '../state/auth';
 import { UsageMeter } from './UsageMeter';
 
+// The wordmark is part of the logo: it keeps the brand font and size whatever font or text size is picked.
+const BRAND_FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
 export function Logo({ size = 32, withText = true }: { size?: number; withText?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-2" style={{ fontFamily: BRAND_FONT }}>
       <img src="/brand/logo-128.png" width={size} height={size} alt={withText ? '' : 'FridgeWise'} className="shrink-0" />
       {withText && (
         <>
-          <span className="text-lg font-extrabold tracking-tight">FridgeWise</span>
+          <span className="text-[18px] leading-7 font-extrabold tracking-tight">FridgeWise</span>
           <BetaTag />
         </>
       )}
@@ -23,13 +26,16 @@ export function Logo({ size = 32, withText = true }: { size?: number; withText?:
 export function BetaTag() {
   return (
     <span
-      className="rounded-md border border-ink/15 bg-lime px-1.5 py-0.5 text-[0.65rem] font-extrabold uppercase leading-none tracking-wider text-ink"
+      className="rounded-md border border-ink/15 bg-lime px-[6px] py-[3px] text-[10.5px] font-extrabold uppercase leading-none tracking-wider text-ink"
       title="FridgeWise is in development: features may change."
     >
       Beta
     </span>
   );
 }
+
+// Phone header buttons stay 44px whatever the text size, so the header always fits on one line.
+const HEADER_ICON = 'btn btn-ghost btn-icon min-h-[44px] min-w-[44px] p-[10px]';
 
 // `tour` marks the link for the explore tour (components/Tour.tsx).
 const NAV = [
@@ -145,13 +151,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Logo size={28} />
           </Link>
           <div className="flex items-center">
-            <Link to="/guide" className="btn btn-ghost btn-icon" aria-label="How to use FridgeWise" data-tour="help">
+            <Link to="/guide" className={HEADER_ICON} aria-label="How to use FridgeWise" data-tour="help">
               <CircleHelp size={22} data-anim="wiggle" />
             </Link>
-            <Link to="/add" className="btn btn-ghost btn-icon" aria-label="Add item">
+            <Link to="/add" className={HEADER_ICON} aria-label="Add item">
               <Plus size={22} data-anim="turn" />
             </Link>
-            <Link to="/settings" className="btn btn-ghost btn-icon" aria-label="Settings" data-tour="nav-settings">
+            <Link to="/settings" className={HEADER_ICON} aria-label="Settings" data-tour="nav-settings">
               <Settings size={22} data-anim="spin" />
             </Link>
           </div>
@@ -171,25 +177,26 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <ul className="mx-auto flex max-w-xl items-stretch justify-around px-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
             {MOBILE_NAV.map(({ to, label, icon: Icon, end, primary, tour }) => (
-              <li key={to} className="flex-1">
+              <li key={to} className="min-w-0 flex-1">
                 <NavLink
                   to={to}
                   end={end}
                   data-tour={tour}
                   className={({ isActive }) =>
-                    `flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${isActive ? 'text-fg' : 'text-fg-2'}`
+                    `flex h-16 min-w-0 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${isActive ? 'text-fg' : 'text-fg-2'}`
                   }
                 >
                   {({ isActive }) => (
                     <>
                       <span
                         className={`flex items-center justify-center rounded-full transition-colors ${
-                          primary ? 'h-10 w-14 bg-accent text-on-accent' : isActive ? 'h-8 w-14 bg-tint' : 'h-8 w-14'
+                          primary ? 'h-10 w-full max-w-14 bg-accent text-on-accent' : isActive ? 'h-8 w-full max-w-14 bg-tint' : 'h-8 w-full max-w-14'
                         }`}
                       >
                         <Icon size={primary ? 24 : 22} aria-hidden data-anim={primary ? 'pop' : 'bounce'} className={isActive && !primary ? 'nav-pop' : undefined} />
                       </span>
-                      {label}
+                      {/* Very wide fonts at large sizes shorten the label instead of pushing items off screen. */}
+                      <span className="max-w-full truncate px-0.5">{label}</span>
                     </>
                   )}
                 </NavLink>

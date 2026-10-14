@@ -60,7 +60,7 @@ function Bar({
       <div
         id={tipId}
         role="tooltip"
-        className={`pointer-events-none absolute bottom-full left-0 z-50 mb-2 max-w-[calc(100vw-2rem)] rounded-xl ${compact ? 'w-56' : 'w-72'} bg-ink px-3 py-2 text-xs leading-snug text-white shadow-lg transition-opacity duration-150 dark:bg-white dark:text-ink ${
+        className={`pointer-events-none absolute bottom-full left-0 z-50 mb-2 rounded-xl ${compact ? 'w-56' : 'right-0 sm:right-auto sm:w-80'} bg-ink px-3 py-2 text-xs leading-snug text-white shadow-lg transition-opacity duration-150 dark:bg-white dark:text-ink ${
           open ? 'opacity-100' : 'opacity-0'
         }`}
       >
