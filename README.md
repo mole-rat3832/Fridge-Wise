@@ -285,6 +285,12 @@ Migrations are in `supabase/migrations`. The tables follow the brief, with these
 - Email reminders are not included yet; `profiles.notify_email` is ready for them.
 - Migrations that contain `delete` statements (`undo_rpc`, `account_and_demo`, `cleanup_jobs`) are kept in their own files, because the Supabase connector asks for confirmation before running them.
 
+## License
+
+The source code is released under the [MIT License](LICENSE.md).
+
+The FridgeWise name and logo are **not** covered by that license: `fridgewise-logo.png` and the images made from it (`public/icons/`, `public/brand/`, `public/favicon.ico`, `public/og-image.png` and `public/screenshots/`) are © 2026 mole-rat3832, all rights reserved. If you build on this code, please use your own name and logo (`npm run icons` regenerates every icon from a new `fridgewise-logo.png`).
+
 ## Credits
 
 Built for a school AI competition. Shelf-life data from [USDA FoodKeeper](https://www.foodsafety.gov/keep-food-safe/foodkeeper-app). Powered by [Supabase](https://supabase.com), [Google Gemini](https://ai.google.dev), [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) and [Netlify](https://www.netlify.com). Icons by [Lucide](https://lucide.dev).
