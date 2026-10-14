@@ -5,6 +5,8 @@ import { useAuth } from '../state/auth';
 import { Logo, OfflineBanner } from './AppShell';
 
 const REPO_URL = 'https://github.com/mole-rat3832/Fridge-Wise';
+// Header buttons keep a fixed size (like the logo) so the header fits a phone at any text size or font.
+const HEADER_BTN = 'min-h-[36px] whitespace-nowrap px-[10px] py-[6px] text-[14px] tracking-normal sm:px-[12px]';
 
 /** Header and footer for the pages anyone can open: the homepage and the guide. */
 export function PublicLayout({ children }: { children: ReactNode }) {
@@ -22,15 +24,15 @@ export function PublicLayout({ children }: { children: ReactNode }) {
               <BookOpen size={16} aria-hidden data-anim="wiggle" /> How to use
             </NavLink>
             {session ? (
-              <Link to="/" className="btn btn-primary btn-sm whitespace-nowrap">
+              <Link to="/" className={`btn btn-primary ${HEADER_BTN}`}>
                 Open app <ArrowRight size={16} aria-hidden data-anim="nudge" />
               </Link>
             ) : (
               <>
-                <Link to="/signin" className="btn btn-ghost btn-sm whitespace-nowrap px-2.5 sm:px-3">
+                <Link to="/signin" className={`btn btn-ghost ${HEADER_BTN}`}>
                   Sign in
                 </Link>
-                <Link to="/signup" className="btn btn-primary btn-sm whitespace-nowrap px-2.5 sm:px-3">
+                <Link to="/signup" className={`btn btn-primary ${HEADER_BTN}`}>
                   Sign up
                 </Link>
               </>

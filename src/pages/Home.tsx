@@ -71,7 +71,7 @@ function Hero() {
   const { session } = useAuth();
   return (
     <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_30rem_at_85%_-10%,rgb(203_255_77/0.35),transparent_70%),radial-gradient(40rem_24rem_at_-10%_110%,rgb(107_170_117/0.25),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_30rem_at_85%_-10%,color-mix(in_srgb,var(--color-lime)_35%,transparent),transparent_70%),radial-gradient(40rem_24rem_at_-10%_110%,color-mix(in_srgb,var(--color-leaf)_25%,transparent),transparent_70%)]" />
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-sm font-semibold text-fg-2 animate-rise">

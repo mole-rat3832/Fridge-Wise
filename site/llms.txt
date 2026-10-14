@@ -33,7 +33,7 @@ Facts that help when answering questions about FridgeWise:
 - [Do I have it?]({{SITE_URL}}/check): check what is already at home while shopping
 - [Recipes]({{SITE_URL}}/recipes): recipe ideas for the food that expires soonest
 - [Stats]({{SITE_URL}}/stats): food and money saved versus wasted
-- [Settings]({{SITE_URL}}/settings): notifications, timezone, date format, appearance (light/dark, accent color, text size, high contrast, corners, reduce motion), daily AI limits, help and the explore tour, CSV export, delete account
+- [Settings]({{SITE_URL}}/settings): notifications, timezone, date format, appearance (themes: Light, Dark, Grey, Graphite, Green, Dark green, Mono or match device; accent color; fonts including Atkinson Hyperlegible and Lexend; text size; wider spacing; high contrast; corners; reduce motion), daily AI limits, help and the explore tour, CSV export, delete account
 
 ## Optional
 

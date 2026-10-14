@@ -21,10 +21,28 @@ const TOSSED = '#69747C';
 
 function subscribeTheme(cb: () => void) {
   const obs = new MutationObserver(cb);
-  obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'data-contrast'] });
   return () => obs.disconnect();
 }
-const useDark = () => useSyncExternalStore(subscribeTheme, () => document.documentElement.classList.contains('dark'), () => false);
+// Chart colors follow the color theme (Settings > Appearance): read from the CSS variables on <html>.
+function themeKey(): string {
+  const root = document.documentElement;
+  const css = getComputedStyle(root);
+  const v = (name: string) => css.getPropertyValue(name).trim();
+  return [root.classList.contains('dark') ? '1' : '0', v('--fw-fg-2'), v('--fw-surface'), v('--color-leaf')].join('|');
+}
+function useChartColors() {
+  const [dark, tick, surface, leaf] = useSyncExternalStore(subscribeTheme, themeKey, () => '0|||').split('|');
+  const isDark = dark === '1';
+  return {
+    used: leaf || USED,
+    tossed: TOSSED,
+    tick: tick || '#545454',
+    surface: surface || '#ffffff',
+    grid: isDark ? 'rgba(105,116,124,0.35)' : 'rgba(105,116,124,0.25)',
+    cursor: isDark ? 'rgba(105,116,124,0.18)' : 'rgba(105,116,124,0.1)',
+  };
+}
 
 interface WeekPoint {
   week: string;
@@ -72,13 +90,14 @@ function Legend({ items }: { items: Array<{ label: string; color: string; hatch?
 }
 
 function ChartTooltip({ active, payload, label, money, locale }: TooltipContentProps<number, string> & { money: boolean; locale: string }) {
+  const colors = useChartColors();
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-line bg-surface px-3 py-2 text-sm shadow-lg">
       <p className="mb-1 text-fg-2">Week of {label}</p>
       {payload.map((p) => (
         <p key={String(p.dataKey)} className="flex items-center gap-2">
-          <span className="inline-block h-0.5 w-3" style={{ background: p.dataKey === 'used' || p.dataKey === 'saved' ? USED : TOSSED }} aria-hidden />
+          <span className="inline-block h-0.5 w-3" style={{ background: p.dataKey === 'used' || p.dataKey === 'saved' ? colors.used : colors.tossed }} aria-hidden />
           <strong className="tabular-nums">{money ? formatMoney(Number(p.value), locale) : p.value}</strong>
           <span className="text-fg-2">{p.name}</span>
         </p>
@@ -100,11 +119,8 @@ function WeeklyChart({
   money: boolean;
   locale: string;
 }) {
-  const dark = useDark();
+  const { used, tossed, tick, surface, grid, cursor } = useChartColors();
   const [table, setTable] = useState(false);
-  const grid = dark ? 'rgba(105,116,124,0.35)' : 'rgba(105,116,124,0.25)';
-  const tick = dark ? 'rgba(255,255,255,0.8)' : '#545454';
-  const surface = dark ? '#181b19' : '#ffffff';
   const hatchId = `hatch-${keys[1].key}`;
 
   return (
@@ -115,7 +131,7 @@ function WeeklyChart({
           {table ? <ChartColumn size={16} aria-hidden /> : <Table size={16} aria-hidden />} {table ? 'Show chart' : 'Show table'}
         </button>
       </div>
-      <Legend items={[{ label: keys[0].label, color: USED }, { label: keys[1].label, color: TOSSED, hatch: true }]} />
+      <Legend items={[{ label: keys[0].label, color: used }, { label: keys[1].label, color: tossed, hatch: true }]} />
       {table ? (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm">
@@ -143,7 +159,7 @@ function WeeklyChart({
             <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -8 }} barGap={2} barCategoryGap="28%">
               <defs>
                 <pattern id={hatchId} patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-                  <rect width="6" height="6" fill={TOSSED} />
+                  <rect width="6" height="6" fill={tossed} />
                   <line x1="0" y1="0" x2="0" y2="6" stroke={surface} strokeWidth="2" strokeOpacity="0.55" />
                 </pattern>
               </defs>
@@ -158,10 +174,10 @@ function WeeklyChart({
                 tickFormatter={(v: number) => (money ? formatMoney(v, locale).replace(/\.00$/, '') : String(v))}
               />
               <Tooltip
-                cursor={{ fill: dark ? 'rgba(105,116,124,0.18)' : 'rgba(105,116,124,0.1)' }}
+                cursor={{ fill: cursor }}
                 content={(props) => <ChartTooltip {...(props as TooltipContentProps<number, string>)} money={money} locale={locale} />}
               />
-              <Bar dataKey={keys[0].key} name={keys[0].label} fill={USED} radius={[4, 4, 0, 0]} maxBarSize={24} />
+              <Bar dataKey={keys[0].key} name={keys[0].label} fill={used} radius={[4, 4, 0, 0]} maxBarSize={24} />
               <Bar dataKey={keys[1].key} name={keys[1].label} fill={`url(#${hatchId})`} radius={[4, 4, 0, 0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>

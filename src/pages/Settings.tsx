@@ -1,5 +1,7 @@
 import {
   Accessibility,
+  CaseSensitive,
+  WholeWord,
   BookOpen,
   Bell,
   Check,
@@ -13,13 +15,10 @@ import {
   Globe,
   Info,
   LogOut,
-  Monitor,
-  Moon,
   Palette,
   Sparkles,
   Square,
   SquareRoundCorner,
-  Sun,
   Trash,
   Type,
   UserRound,
@@ -36,7 +35,7 @@ import { toCsv, downloadFile } from '../lib/csv';
 import { browserTimeZone, supportedTimeZones } from '../lib/dates';
 import { currentSubscription, disablePush, enablePush, isIOS, isStandalone, pushSupport, testNotification } from '../lib/push';
 import { supabase } from '../lib/supabase';
-import { ACCENTS, getAppearance, setAppearance, type Appearance } from '../lib/theme';
+import { ACCENTS, FONTS, getAppearance, setAppearance, THEMES, type Appearance } from '../lib/theme';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
 import { useToast } from '../state/toast';
@@ -64,6 +63,31 @@ function ChoiceRow({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
+/** Readable text color (ink or white) for a solid background color. */
+function textOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? '#141714' : '#ffffff';
+}
+
+/** A small picture of a theme: page, a card with a line of text, and a button. */
+function ThemeSwatch({ theme }: { theme: (typeof THEMES)[number] }) {
+  const split = theme.id === 'system';
+  const half = (a: string, b: string) => (split ? `linear-gradient(115deg, ${a} 50%, ${b} 50%)` : a);
+  return (
+    <span className="relative block h-16 overflow-hidden rounded-xl ring-1 ring-black/10 ring-inset" style={{ background: half('#ffffff', '#0f110f') }} aria-hidden>
+      {!split && <span className="absolute inset-0" style={{ background: theme.bg }} />}
+      <span
+        className="absolute left-2 right-2 top-2 h-6 rounded-md ring-1 ring-black/10"
+        style={{ background: split ? half('#ffffff', '#181b19') : theme.surface }}
+      >
+        <span className="absolute left-2 top-2 h-2 w-12 rounded-full opacity-80" style={{ background: split ? half('#141714', '#ffffff') : theme.fg }} />
+      </span>
+      <span className="absolute bottom-2 left-2 h-4 w-10 rounded-full" style={{ background: split ? half('#6baa75', '#84dd63') : theme.accent }} />
+      <span className="absolute bottom-3 left-14 h-1.5 w-8 rounded-full opacity-40" style={{ background: split ? half('#141714', '#ffffff') : theme.fg }} />
+    </span>
+  );
+}
+
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <section className="card p-4 sm:p-6">
@@ -87,6 +111,8 @@ export function Settings() {
   const [look, setLook] = useState<Appearance>(getAppearance());
   const updateLook = (patch: Partial<Appearance>) => setLook(setAppearance(patch));
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  // The theme's own accent, shown on the "Theme default" swatch.
+  const themeAccent = look.theme === 'system' ? (isDark ? '#84dd63' : '#6baa75') : (THEMES.find((t) => t.id === look.theme)?.accent ?? '#6baa75');
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -306,24 +332,42 @@ export function Settings() {
       </Section>
 
       <Section icon={<Palette size={20} aria-hidden data-anim="wiggle" />} title="Appearance">
-        <ChoiceRow label="Theme">
-          {(
-            [
-              ['system', 'Match device', Monitor, 'pop'],
-              ['light', 'Light', Sun, 'spin'],
-              ['dark', 'Dark', Moon, 'wiggle'],
-            ] as const
-          ).map(([t, label, Icon, anim]) => (
-            <button key={t} type="button" role="radio" aria-checked={look.theme === t} aria-pressed={look.theme === t} className="chip" onClick={() => updateLook({ theme: t })}>
-              <Icon size={16} aria-hidden data-anim={anim} /> {label}
-            </button>
-          ))}
-        </ChoiceRow>
+        <div>
+          <p className="label">Theme</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Theme">
+            {THEMES.map((t) => {
+              const selected = look.theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={t.label}
+                  aria-describedby={`theme-hint-${t.id}`}
+                  onClick={() => updateLook({ theme: t.id })}
+                  className={`rounded-2xl border p-2 text-left transition-[border-color,transform] active:scale-[0.98] ${
+                    selected ? 'border-fg ring-2 ring-fg' : 'border-line hover:border-fg-3'
+                  }`}
+                >
+                  <ThemeSwatch theme={t} />
+                  <span className="mt-2 flex items-center justify-between gap-1 px-1 text-sm font-semibold">
+                    {t.label}
+                    {selected && <Check size={16} strokeWidth={3} className="animate-pop shrink-0" aria-hidden />}
+                  </span>
+                  <span id={`theme-hint-${t.id}`} className="block px-1 pb-0.5 text-xs text-fg-2">
+                    {t.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <ChoiceRow label="Accent color">
           {ACCENTS.map((a) => {
             const selected = look.accent === a.id;
-            const onDark = a.id === 'steel' || a.id === 'slate';
+            const color = a.id === 'leaf' ? themeAccent : ((isDark ? a.dark : a.light) ?? themeAccent);
             return (
               <button
                 key={a.id}
@@ -331,31 +375,22 @@ export function Settings() {
                 role="radio"
                 aria-checked={selected}
                 aria-label={a.label}
-                title={a.label}
                 onClick={() => updateLook({ accent: a.id })}
-                className={`relative flex h-11 w-11 items-center justify-center rounded-full border transition-transform hover:scale-110 active:scale-95 ${
-                  selected ? 'border-fg ring-2 ring-fg ring-offset-2 ring-offset-surface' : 'border-line'
-                }`}
-                style={{ backgroundColor: isDark ? a.dark : a.light }}
+                className="group flex w-16 flex-col items-center gap-1 text-center"
               >
-                {selected && <Check size={18} strokeWidth={3} className={`animate-pop ${onDark ? 'text-white' : 'text-ink'}`} aria-hidden />}
+                <span
+                  className={`relative flex h-11 w-11 items-center justify-center rounded-full border transition-transform group-hover:scale-110 group-active:scale-95 ${
+                    selected ? 'border-fg ring-2 ring-fg ring-offset-2 ring-offset-surface' : 'border-line'
+                  }`}
+                  style={{ backgroundColor: color }}
+                >
+                  {a.id === 'leaf' && !selected && <Sparkles size={16} aria-hidden style={{ color: textOn(color) }} />}
+                  {selected && <Check size={18} strokeWidth={3} className="animate-pop" style={{ color: textOn(color) }} aria-hidden />}
+                </span>
+                <span className="text-xs leading-tight text-fg-2">{a.label}</span>
               </button>
             );
           })}
-        </ChoiceRow>
-
-        <ChoiceRow label="Text size">
-          {(
-            [
-              ['default', 'Default', 14],
-              ['large', 'Large', 17],
-              ['xl', 'Extra large', 20],
-            ] as const
-          ).map(([t, label, size]) => (
-            <button key={t} type="button" role="radio" aria-checked={look.text === t} aria-pressed={look.text === t} className="chip" onClick={() => updateLook({ text: t })}>
-              <Type size={size} aria-hidden data-anim="bounce" /> {label}
-            </button>
-          ))}
         </ChoiceRow>
 
         <ChoiceRow label="Corners">
@@ -401,9 +436,78 @@ export function Settings() {
             <span className="chip" aria-pressed="true">
               Fridge
             </span>
+            <span className="badge badge-red">Use today</span>
             <span className="badge badge-yellow">Use soon</span>
             <span className="badge badge-green">Fresh</span>
           </div>
+        </div>
+      </Section>
+
+      <Section icon={<CaseSensitive size={20} aria-hidden data-anim="pop" />} title="Text and font">
+        <div>
+          <p className="label">Font</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Font">
+            {FONTS.map((f) => {
+              const selected = look.font === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={f.label}
+                  aria-describedby={`font-hint-${f.id}`}
+                  onClick={() => updateLook({ font: f.id })}
+                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-[border-color,transform] active:scale-[0.98] ${
+                    selected ? 'border-fg ring-2 ring-fg' : 'border-line hover:border-fg-3'
+                  }`}
+                  style={{ fontFamily: f.stack }}
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-tint text-2xl font-bold" aria-hidden>
+                    Aa
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold leading-tight">{f.label}</span>
+                    <span id={`font-hint-${f.id}`} className="block text-xs text-fg-2">
+                      {f.hint}
+                    </span>
+                  </span>
+                  {selected && <Check size={18} strokeWidth={3} className="animate-pop shrink-0" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <ChoiceRow label="Text size">
+          {(
+            [
+              ['default', 'Default', 14],
+              ['large', 'Large', 17],
+              ['xl', 'Extra large', 20],
+            ] as const
+          ).map(([t, label, size]) => (
+            <button key={t} type="button" role="radio" aria-checked={look.text === t} aria-pressed={look.text === t} className="chip" onClick={() => updateLook({ text: t })}>
+              <Type size={size} aria-hidden data-anim="bounce" /> {label}
+            </button>
+          ))}
+        </ChoiceRow>
+
+        <Toggle
+          checked={look.spacing === 'wide'}
+          onChange={(on) => updateLook({ spacing: on ? 'wide' : 'normal' })}
+          label="Wider spacing"
+          description={
+            <span className="inline-flex items-center gap-1">
+              <WholeWord size={14} aria-hidden /> More room between letters, words and lines. Many people with dyslexia find it easier to read.
+            </span>
+          }
+        />
+
+        <div className="rounded-2xl border border-dashed border-line p-4" aria-label="Text preview">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-fg-2">Preview</p>
+          <p className="text-lg font-bold">Milk expires tomorrow</p>
+          <p className="mt-1 text-fg-2">Use it up in pancakes, a smoothie or a creamy pasta sauce. 1 gal · Fridge · Opened Oct 12.</p>
         </div>
       </Section>
 
@@ -453,7 +557,7 @@ export function Settings() {
       </Section>
 
       <Section icon={<UserRound size={20} aria-hidden />} title="Account">
-        <p className="text-sm text-fg-2">Signed in as {user?.email}</p>
+        <p className="text-sm text-fg-2 [overflow-wrap:anywhere]">Signed in as {user?.email}</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-secondary" onClick={() => void signOut()}>
             <LogOut size={18} aria-hidden data-anim="nudge" /> Sign out

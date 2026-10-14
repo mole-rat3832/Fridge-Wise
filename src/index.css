@@ -4,7 +4,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Brand palette (only these, plus white / near-black for text):
+ * Brand palette (only these, plus white / near-black for text; the extra color themes below are tints
+ * and shades of it):
  *   slate #545454 · steel #69747C · leaf #6BAA75 · sprout #84DD63 · lime #CBFF4D
  * Status: green #84DD63 (fresh), yellow #CBFF4D (use soon), muted red #B04A43 (use today / expired only).
  * Contrast (WCAG AA) checked for every text/background pair in both themes.
@@ -66,6 +67,70 @@
   --fw-focus: #cbff4d;
 }
 
+/*
+ * Color themes (Settings > Appearance), set as data-theme on <html> by lib/theme.ts. Each is a tint or
+ * shade of the palette; dark ones also get the .dark class so dark: styles apply. Every text pair is at
+ * least 4.5:1 on the page, cards and tinted areas, and focus rings 3:1 (checked with a script).
+ */
+:root[data-theme='grey'] {
+  --fw-bg: #eceeef;
+  --fw-surface: #f8f9f9;
+  --fw-tint: rgb(105 116 124 / 0.12);
+  --fw-line: rgb(105 116 124 / 0.42);
+  --fw-fg-2: #4a4f52; /* 7.1:1 */
+  --fw-fg-3: #5a6268; /* 5.3:1 */
+  --fw-danger: #a3433c;
+}
+:root[data-theme='graphite'] {
+  --fw-bg: #232526;
+  --fw-surface: #2e3133;
+  --fw-tint: rgb(255 255 255 / 0.07);
+  --fw-line: rgb(255 255 255 / 0.24);
+  --fw-fg-2: rgb(255 255 255 / 0.84); /* 9.7:1 on cards */
+  --fw-fg-3: rgb(255 255 255 / 0.72); /* 7.6:1 */
+  --fw-danger: #f2a196;
+}
+:root[data-theme='green'] {
+  --fw-bg: #e9f3eb;
+  --fw-surface: #f8fcf8;
+  --fw-tint: rgb(107 170 117 / 0.14);
+  --fw-line: rgb(107 170 117 / 0.55);
+  --fw-fg: #132016;
+  --fw-fg-2: #3d4f41; /* 7.7:1 */
+  --fw-fg-3: #4f6153; /* 5.8:1 */
+  --fw-on-accent: #132016;
+  --fw-danger: #a3433c;
+  --fw-focus: #132016;
+}
+:root[data-theme='forest'] {
+  --fw-bg: #0b1a10;
+  --fw-surface: #12271a;
+  --fw-tint: rgb(107 170 117 / 0.16);
+  --fw-line: rgb(107 170 117 / 0.45);
+  --fw-fg-2: rgb(255 255 255 / 0.84); /* 11.4:1 on cards */
+  --fw-fg-3: rgb(255 255 255 / 0.72); /* 8.8:1 */
+  --fw-on-accent: #0b1a10;
+  --fw-danger: #f2a196;
+}
+/* Mono: black, white and greys. Status colors become shades too (labels and icons still tell them
+   apart); only errors stay red. */
+:root[data-theme='mono'] {
+  --fw-bg: #ffffff;
+  --fw-surface: #ffffff;
+  --fw-tint: rgb(0 0 0 / 0.05);
+  --fw-line: rgb(0 0 0 / 0.35);
+  --fw-fg: #000000;
+  --fw-fg-2: #3a3a3a; /* 11.4:1 */
+  --fw-fg-3: #555555; /* 7.5:1 */
+  --fw-accent: #141714;
+  --fw-on-accent: #ffffff; /* 18:1 */
+  --fw-focus: #000000;
+  --color-lime: #e4e4e4;
+  --color-sprout: #c9c9c9;
+  --color-leaf: #8a8a8a;
+  --color-expired: #2b2b2b;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -76,6 +141,8 @@
     color: var(--fw-fg);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* Long words (emails, product names) wrap instead of pushing the page sideways, at any font or size. */
+    overflow-wrap: break-word;
     min-height: 100dvh;
     overscroll-behavior-y: none;
   }
@@ -261,6 +328,13 @@
    Appearance options (Settings > Appearance). Set as attributes on <html> by lib/theme.ts.
    Every accent keeps at least 4.5:1 between the button and its text.
    --------------------------------------------------------------------------- */
+:root[data-accent='green'] {
+  --fw-accent: #6baa75;
+  --fw-on-accent: #141714;
+}
+:root.dark[data-accent='green'] {
+  --fw-accent: #84dd63;
+}
 :root[data-accent='lime'] {
   --fw-accent: #cbff4d; /* ink text 16:1 */
   --fw-on-accent: #141714;
@@ -299,6 +373,31 @@
 }
 :root[data-contrast='high'] :focus-visible {
   outline-width: 3px;
+}
+
+/* Fonts (Settings > Text and font). The web fonts are imported in main.tsx and only load when used. */
+:root[data-font='nunito'] {
+  --font-sans: 'Nunito Variable', ui-rounded, system-ui, sans-serif;
+}
+:root[data-font='atkinson'] {
+  --font-sans: 'Atkinson Hyperlegible', system-ui, sans-serif;
+}
+:root[data-font='lexend'] {
+  --font-sans: 'Lexend Variable', system-ui, sans-serif;
+}
+:root[data-font='serif'] {
+  --font-sans: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+}
+:root[data-font='mono'] {
+  --font-sans: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, monospace;
+}
+/* Wider spacing: more room between letters, words and lines (helps many readers, including with dyslexia). */
+:root[data-spacing='wide'] body {
+  letter-spacing: 0.03em;
+  word-spacing: 0.12em;
+}
+:root[data-spacing='wide'] :is(p, li, dd, label, summary) {
+  line-height: 1.75;
 }
 
 :root[data-corners='square'] {
