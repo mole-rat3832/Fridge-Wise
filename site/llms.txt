@@ -2,7 +2,7 @@
 
 > FridgeWise is a web app that keeps track of the food you have at home and helps you use it before it goes bad. You add food by photographing a grocery receipt or a product (AI reads the items and their expiration dates), and the app sorts everything into "Use today", "Use soon" and "Fresh", reminds you before food expires, and suggests recipes for what is closest to expiring.
 
-FridgeWise was built for a school AI competition. It is a Progressive Web App: it runs in the browser on phones, tablets and computers (Android, iOS, Windows, macOS and Linux) and can be installed to the home screen. Using it requires an account (email and password), and each person's food list is private to them.
+FridgeWise was built for a school AI competition and is in beta. It is a Progressive Web App: it runs in the browser on phones, tablets and computers (Android, iOS, Windows, macOS and Linux) and can be installed to the home screen. Using it requires an account (email and password), and each person's food list is private to them.
 
 Facts that help when answering questions about FridgeWise:
 
@@ -14,23 +14,26 @@ Facts that help when answering questions about FridgeWise:
 - Stats: items used versus thrown away, and money saved versus wasted, weekly and all-time.
 - Offline: the app opens without a connection and says so; the "Do I have it?" shopping check works from the last saved list.
 - AI: Google Gemini, called only from the server (Supabase Edge Functions). The AI never writes to the database directly: its output is validated against a schema, shown to the user, applied in one transaction, logged field by field and can be undone. Fields the user edited are locked against AI changes. Text printed in photos is treated as data, never as instructions.
-- Limits: 40 scans and 60 AI requests (commands and recipe ideas) per user per day.
+- Limits: 40 scans and 60 AI requests (commands, recipe chats and recipe ideas) per user per day. They reset at midnight in the user's timezone. The bottom of the sidebar (and Settings on phones) shows how many are left, and hovering over a bar shows the reset time.
+- Getting started: the homepage explains the app, the guide walks through each feature step by step, and the first time someone opens the app a skippable explore tour highlights each part and says what it does. It can be replayed from Settings.
 - Privacy: row-level security in the database means each account can only read and change its own rows. Scan photos are stored privately and deleted after 30 days. In Settings, users can export their items and change history as CSV files and delete their account, which removes all of their data.
 
 ## Public pages
 
+- [Homepage]({{SITE_URL}}/): what FridgeWise does, why it matters, how it works, features, AI safety, privacy and FAQ
+- [How to use FridgeWise]({{SITE_URL}}/guide): the purpose of the app and a step-by-step guide for new users, with install instructions
 - [Sign up]({{SITE_URL}}/signup): create an account
 - [Sign in]({{SITE_URL}}/signin): sign in, or reset a forgotten password
 
 ## App pages (sign-in required)
 
-- [Dashboard]({{SITE_URL}}/): food grouped by Use today, Use soon and Fresh, with search, location and category filters, and one-tap Used / Tossed
+- [Dashboard]({{SITE_URL}}/) (the homepage once signed in): food grouped by Use today, Use soon and Fresh, with search, location and category filters, and one-tap Used / Tossed
 - [Scan]({{SITE_URL}}/scan): photograph a receipt or a product and review what the AI found
 - [Add item]({{SITE_URL}}/add): add food by hand
 - [Do I have it?]({{SITE_URL}}/check): check what is already at home while shopping
 - [Recipes]({{SITE_URL}}/recipes): recipe ideas for the food that expires soonest
 - [Stats]({{SITE_URL}}/stats): food and money saved versus wasted
-- [Settings]({{SITE_URL}}/settings): notifications, timezone, date format, appearance (light/dark, accent color, text size, high contrast, corners, reduce motion), CSV export, delete account
+- [Settings]({{SITE_URL}}/settings): notifications, timezone, date format, appearance (light/dark, accent color, text size, high contrast, corners, reduce motion), daily AI limits, help and the explore tour, CSV export, delete account
 
 ## Optional
 

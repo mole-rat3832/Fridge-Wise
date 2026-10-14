@@ -646,6 +646,93 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Explore tour (components/Tour.tsx): the spot's huge shadow dims everything else, the ring is
+   drawn around the target with a conic mask, then a soft glow pulses.
+   --------------------------------------------------------------------------- */
+@property --tour-sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 360deg;
+}
+@keyframes tour-draw {
+  from {
+    --tour-sweep: 0deg;
+  }
+  to {
+    --tour-sweep: 360deg;
+  }
+}
+@keyframes tour-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(203 255 77 / 0.55);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 14px rgb(203 255 77 / 0);
+  }
+}
+.tour-spot {
+  position: fixed;
+  pointer-events: none;
+  box-shadow: 0 0 0 200vmax rgb(10 12 10 / 0.62);
+  transition:
+    top 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    left 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 360ms ease;
+}
+.tour-ring,
+.tour-glow {
+  position: absolute;
+  inset: -5px;
+  border-radius: calc(var(--tour-r, 12px) + 5px);
+}
+.tour-ring {
+  border: 3px solid var(--color-lime);
+  -webkit-mask: conic-gradient(from -90deg, #000 var(--tour-sweep), transparent 0);
+  mask: conic-gradient(from -90deg, #000 var(--tour-sweep), transparent 0);
+  animation: tour-draw 650ms cubic-bezier(0.5, 0, 0.3, 1) 180ms backwards;
+}
+.tour-glow {
+  animation: tour-glow 1.8s ease-out 850ms infinite;
+}
+.tour-pop {
+  transition:
+    top 300ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    left 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Homepage: floating sample cards in the hero (a gentle loop, off with reduced motion). */
+@keyframes fw-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.float-loop {
+  animation: fw-float 6s ease-in-out infinite;
+}
+
+/* Homepage sections fade up as they scroll into view, where the browser supports it. */
+@supports (animation-timeline: view()) {
+  @keyframes scroll-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+  }
+  .scroll-reveal {
+    animation: scroll-reveal linear backwards;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+
 /* Respect reduced motion: no loops, no sweeping effects, near-instant entrances. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -660,7 +747,10 @@
   .scan-frame::after,
   .scan-spark,
   .reveal-card::after,
-  .ready-pulse {
+  .ready-pulse,
+  .tour-glow,
+  .float-loop,
+  .scroll-reveal {
     animation: none !important;
   }
   .scan-frame::after,
@@ -684,7 +774,10 @@
 :root[data-motion='reduce'] .scan-frame::after,
 :root[data-motion='reduce'] .scan-spark,
 :root[data-motion='reduce'] .reveal-card::after,
-:root[data-motion='reduce'] .ready-pulse {
+:root[data-motion='reduce'] .ready-pulse,
+:root[data-motion='reduce'] .tour-glow,
+:root[data-motion='reduce'] .float-loop,
+:root[data-motion='reduce'] .scroll-reveal {
   animation: none !important;
 }
 :root[data-motion='reduce'] .scan-frame::after,

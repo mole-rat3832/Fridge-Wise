@@ -583,6 +583,7 @@ export type Database = {
       };
     };
     Functions: {
+      ai_usage_today: { Args: Record<PropertyKey, never>; Returns: Json };
       apply_ai_changes: {
         Args: { p_batch: Json; p_model?: string; p_source: Database["public"]["Enums"]["edit_log_source"] };
         Returns: Json;

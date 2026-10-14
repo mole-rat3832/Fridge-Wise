@@ -20,9 +20,13 @@ function offline(): boolean {
   return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
 
+/** Fired after every AI call so the usage meters refresh (a call counts even when it fails). */
+export const AI_USAGE_EVENT = 'fw-ai-usage';
+
 async function invoke<T>(name: string, body: unknown): Promise<T> {
   if (offline()) throw new ApiError("You're offline. Connect to the internet and try again.", 'offline');
   const { data, error } = await supabase.functions.invoke(name, { body: body as Record<string, unknown> });
+  window.dispatchEvent(new Event(AI_USAGE_EVENT));
   if (error) {
     if (error instanceof FunctionsHttpError) {
       let payload: { error?: string; code?: string } & Record<string, unknown> = {};
@@ -104,6 +108,18 @@ export const shelfLifeLookup = (items: Array<{ name: string; category: string; s
 export const loadDemoData = () => rpc<{ active_items: number; history_items: number }>('load_demo_data');
 export const clearDemoData = () => rpc<number>('clear_demo_data');
 export const deleteMyAccount = () => rpc<null>('delete_my_account');
+
+/** Today's AI usage, counted the same way the server enforces the daily limits. */
+export interface AiUsage {
+  scans_used: number;
+  scans_limit: number;
+  requests_used: number;
+  requests_limit: number;
+  /** The next midnight in the user's timezone (ISO timestamp). */
+  resets_at: string;
+  timezone: string;
+}
+export const aiUsageToday = () => rpc<AiUsage>('ai_usage_today');
 
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;

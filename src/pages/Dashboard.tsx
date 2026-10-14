@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CommandBar } from '../components/CommandBar';
 import { ItemGroup } from '../components/ItemRow';
+import { useTour } from '../components/Tour';
 import { EmptyState, FRESHNESS_ICON, FRESHNESS_LABEL, PageHeader, Spinner } from '../components/ui';
 import { isDemoAccount } from '../lib/demo';
 import { useOnline } from '../hooks/useOnline';
@@ -62,6 +63,13 @@ export function Dashboard() {
       .then(({ count }) => setPendingScans(count ?? 0));
   }, []);
 
+  // First visit: offer the explore tour once the list has loaded (it is skippable).
+  const tour = useTour();
+  const autoStartTour = tour?.autoStart;
+  useEffect(() => {
+    if (!loading && !params.get('status')) autoStartTour?.();
+  }, [loading, params, autoStartTour]);
+
   // Opening a reminder notification lands on /?status=soon.
   useEffect(() => {
     if (params.get('status') === 'soon' && !loading) soonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -94,6 +102,7 @@ export function Dashboard() {
     for (const it of filtered) by[freshness(it.expiration_date, today, rdb)].push(it);
     return (['red', 'yellow', 'green'] as const).map((status) => ({ status, groups: groupByName(by[status]), count: by[status].length }));
   }, [items, query, location, category, today, rdb]);
+  const firstSection = sections.find((s) => s.count > 0)?.status;
 
   async function quick(item: FoodItem, kind: 'used' | 'tossed') {
     setBusyId(item.id);
@@ -134,9 +143,9 @@ export function Dashboard() {
         icon={profile?.display_name ? <Hand size={24} data-anim="wave-once" /> : <Refrigerator size={24} />}
         subtitle={
           items.length === 0 && !loading ? (
-            'Add food to start tracking it.'
+            <span data-tour="summary">Add food to start tracking it.</span>
           ) : (
-            <span>
+            <span data-tour="summary">
               <strong className="text-fg">{counts.red}</strong> to use today · <strong className="text-fg">{counts.yellow}</strong> soon ·{' '}
               <strong className="text-fg">{counts.green}</strong> fresh
             </span>
@@ -144,10 +153,10 @@ export function Dashboard() {
         }
         actions={
           <>
-            <Link to="/scan" className="btn btn-primary">
+            <Link to="/scan" className="btn btn-primary" data-tour="scan">
               <ScanLine size={18} aria-hidden data-anim="pop" /> Scan
             </Link>
-            <Link to="/add" className="btn btn-secondary">
+            <Link to="/add" className="btn btn-secondary" data-tour="add">
               <Plus size={18} aria-hidden data-anim="turn" /> Add item
             </Link>
           </>
@@ -165,7 +174,9 @@ export function Dashboard() {
         </Link>
       )}
 
-      <CommandBar locale={locale} />
+      <div data-tour="command">
+        <CommandBar locale={locale} />
+      </div>
 
       {loading && items.length === 0 ? (
         <div className="flex justify-center py-16">
@@ -195,7 +206,7 @@ export function Dashboard() {
         </EmptyState>
       ) : (
         <>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center" data-tour="filters">
             <div className="relative md:w-72">
               <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" aria-hidden />
               <label htmlFor="dash-search" className="sr-only">
@@ -249,7 +260,10 @@ export function Dashboard() {
                   className={`card overflow-hidden border-l-4 animate-rise ${SECTION_ACCENT[status]}`}
                   style={{ animationDelay: `${index * 90}ms` }}
                 >
-                  <header className="flex items-baseline justify-between gap-2 border-b border-line px-4 py-3">
+                  <header
+                    className="flex items-baseline justify-between gap-2 border-b border-line px-4 py-3"
+                    data-tour={status === firstSection ? 'lists' : undefined}
+                  >
                     <h2 id={`section-${status}`} className="flex items-center gap-2 text-lg font-bold">
                       {(() => {
                         const Icon = FRESHNESS_ICON[status];

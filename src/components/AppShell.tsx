@@ -1,35 +1,96 @@
-import { ChartColumn, ChefHat, House, LogOut, Plus, ScanLine, Search, Settings, WifiOff } from 'lucide-react';
+import { ChartColumn, ChefHat, CircleHelp, House, LogOut, Plus, ScanLine, Search, Settings, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useOnline } from '../hooks/useOnline';
 import { useAuth } from '../state/auth';
+import { UsageMeter } from './UsageMeter';
 
 export function Logo({ size = 32, withText = true }: { size?: number; withText?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
       <img src="/brand/logo-128.png" width={size} height={size} alt={withText ? '' : 'FridgeWise'} className="shrink-0" />
-      {withText && <span className="text-lg font-extrabold tracking-tight">FridgeWise</span>}
+      {withText && (
+        <>
+          <span className="text-lg font-extrabold tracking-tight">FridgeWise</span>
+          <BetaTag />
+        </>
+      )}
     </span>
   );
 }
 
+/** FridgeWise is still in development. */
+export function BetaTag() {
+  return (
+    <span
+      className="rounded-md border border-ink/15 bg-lime px-1.5 py-0.5 text-[0.65rem] font-extrabold uppercase leading-none tracking-wider text-ink"
+      title="FridgeWise is in development: features may change."
+    >
+      Beta
+    </span>
+  );
+}
+
+// `tour` marks the link for the explore tour (components/Tour.tsx).
 const NAV = [
   { to: '/', label: 'Home', icon: House, end: true },
   { to: '/scan', label: 'Scan', icon: ScanLine },
   { to: '/add', label: 'Add item', icon: Plus },
-  { to: '/check', label: 'Do I have it?', icon: Search },
-  { to: '/recipes', label: 'Recipes', icon: ChefHat },
-  { to: '/stats', label: 'Stats', icon: ChartColumn },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/check', label: 'Do I have it?', icon: Search, tour: 'nav-check' },
+  { to: '/recipes', label: 'Recipes', icon: ChefHat, tour: 'nav-recipes' },
+  { to: '/stats', label: 'Stats', icon: ChartColumn, tour: 'nav-stats' },
+  { to: '/settings', label: 'Settings', icon: Settings, tour: 'nav-settings' },
+  { to: '/guide', label: 'How to use', icon: CircleHelp, tour: 'help' },
 ];
 
 const MOBILE_NAV = [
   { to: '/', label: 'Home', icon: House, end: true },
-  { to: '/check', label: 'Check', icon: Search },
+  { to: '/check', label: 'Check', icon: Search, tour: 'nav-check' },
   { to: '/scan', label: 'Scan', icon: ScanLine, primary: true },
-  { to: '/recipes', label: 'Recipes', icon: ChefHat },
-  { to: '/stats', label: 'Stats', icon: ChartColumn },
+  { to: '/recipes', label: 'Recipes', icon: ChefHat, tour: 'nav-recipes' },
+  { to: '/stats', label: 'Stats', icon: ChartColumn, tour: 'nav-stats' },
 ];
+
+function initials(name: string | null | undefined, email: string | null | undefined): string {
+  const words = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (words.length > 0) return words.slice(0, 2).map((w) => [...w][0]!.toUpperCase()).join('');
+  return (email?.[0] ?? '?').toUpperCase();
+}
+
+/** Bottom of the sidebar: who is signed in and how much of today's AI allowance is left. */
+function AccountCard() {
+  const { user, profile, signOut } = useAuth();
+  const name = profile?.display_name?.trim() || null;
+  return (
+    <div className="mt-4 border-t border-line pt-4" data-tour="account">
+      <div className="flex items-center gap-3 px-2">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime text-sm font-extrabold text-ink" aria-hidden>
+          {initials(name, user?.email)}
+        </span>
+        <div className="min-w-0">
+          {name ? (
+            <p className="truncate font-semibold leading-tight" title={name}>
+              {name}
+            </p>
+          ) : (
+            <Link to="/settings" className="text-sm font-semibold leading-tight underline underline-offset-2">
+              Add your name
+            </Link>
+          )}
+          <p className="truncate text-sm text-fg-2" title={user?.email ?? ''}>
+            {user?.email}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 px-2">
+        <UsageMeter compact />
+      </div>
+      <button type="button" onClick={() => void signOut()} className="btn btn-ghost btn-sm mt-3 w-full justify-start text-fg-2">
+        <LogOut size={18} aria-hidden data-anim="nudge" /> Sign out
+      </button>
+    </div>
+  );
+}
 
 export function OfflineBanner() {
   const online = useOnline();
@@ -43,21 +104,21 @@ export function OfflineBanner() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, signOut } = useAuth();
   const { pathname } = useLocation();
   return (
     <div className="min-h-dvh lg:flex">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-tint px-4 py-5 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-line bg-tint px-4 py-5 lg:flex">
         <Link to="/" className="mb-6 px-2">
           <Logo />
         </Link>
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+          {NAV.map(({ to, label, icon: Icon, end, tour }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
+              data-tour={tour}
               className={({ isActive }) =>
                 `flex min-h-11 items-center gap-3 rounded-xl px-3 font-semibold transition-colors ${
                   isActive ? 'bg-fg text-bg' : 'text-fg-2 hover:bg-tint hover:text-fg'
@@ -73,14 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-4 border-t border-line pt-4">
-          <p className="truncate px-2 text-sm text-fg-2" title={user?.email ?? ''}>
-            {user?.email}
-          </p>
-          <button type="button" onClick={() => void signOut()} className="btn btn-ghost btn-sm mt-2 w-full justify-start text-fg-2">
-            <LogOut size={18} aria-hidden data-anim="nudge" /> Sign out
-          </button>
-        </div>
+        <AccountCard />
       </aside>
 
       <div className="min-w-0 flex-1">
@@ -90,11 +144,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" aria-label="FridgeWise home">
             <Logo size={28} />
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
+            <Link to="/guide" className="btn btn-ghost btn-icon" aria-label="How to use FridgeWise" data-tour="help">
+              <CircleHelp size={22} data-anim="wiggle" />
+            </Link>
             <Link to="/add" className="btn btn-ghost btn-icon" aria-label="Add item">
               <Plus size={22} data-anim="turn" />
             </Link>
-            <Link to="/settings" className="btn btn-ghost btn-icon" aria-label="Settings">
+            <Link to="/settings" className="btn btn-ghost btn-icon" aria-label="Settings" data-tour="nav-settings">
               <Settings size={22} data-anim="spin" />
             </Link>
           </div>
@@ -113,11 +170,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-safe backdrop-blur lg:hidden"
         >
           <ul className="mx-auto flex max-w-xl items-stretch justify-around px-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
-            {MOBILE_NAV.map(({ to, label, icon: Icon, end, primary }) => (
+            {MOBILE_NAV.map(({ to, label, icon: Icon, end, primary, tour }) => (
               <li key={to} className="flex-1">
                 <NavLink
                   to={to}
                   end={end}
+                  data-tour={tour}
                   className={({ isActive }) =>
                     `flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${isActive ? 'text-fg' : 'text-fg-2'}`
                   }

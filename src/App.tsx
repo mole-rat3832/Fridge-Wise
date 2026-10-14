@@ -1,17 +1,21 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell, Logo, OfflineBanner } from './components/AppShell';
+import { PublicLayout } from './components/PublicLayout';
+import { TourProvider } from './components/Tour';
 import { Spinner } from './components/ui';
 import { isConfigured } from './lib/env';
 import { watchSystemTheme } from './lib/theme';
 import { ForgotPassword, ResetPassword, SignIn, SignUp } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
+import { Home } from './pages/Home';
 import { AuthProvider, useAuth } from './state/auth';
 import { ItemsProvider } from './state/items';
 import { ToastProvider } from './state/toast';
 
 // Pages other than the dashboard and sign-in are split into their own chunks (Stats pulls in the chart library).
 const AddItem = lazy(() => import('./pages/AddItem').then((m) => ({ default: m.AddItem })));
+const Guide = lazy(() => import('./pages/Guide').then((m) => ({ default: m.Guide })));
 const ItemDetail = lazy(() => import('./pages/ItemDetail').then((m) => ({ default: m.ItemDetail })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then((m) => ({ default: m.Onboarding })));
 const Recipes = lazy(() => import('./pages/Recipes').then((m) => ({ default: m.Recipes })));
@@ -77,6 +81,46 @@ function PublicOnly({ children }: { children: ReactNode }) {
   );
 }
 
+/** `/`: the homepage for visitors, the kitchen dashboard once signed in. */
+function RootRoute() {
+  const { session, loading } = useAuth();
+  if (loading) return <FullPageSpinner />;
+  if (!session) {
+    return (
+      <PublicLayout>
+        <Home />
+      </PublicLayout>
+    );
+  }
+  return (
+    <Protected>
+      <Dashboard />
+    </Protected>
+  );
+}
+
+/** Pages anyone can open (the guide): inside the app when signed in, with the public header otherwise. */
+function PublicOrApp({ children }: { children: ReactNode }) {
+  const { session, profile, loading } = useAuth();
+  if (loading || (session && !profile)) return <FullPageSpinner />;
+  if (session && profile?.onboarded_at) return <Protected>{children}</Protected>;
+  return (
+    <PublicLayout>
+      <div className="px-4 py-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 sm:py-10">
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-16">
+              <Spinner size={28} />
+            </div>
+          }
+        >
+          {children}
+        </Suspense>
+      </div>
+    </PublicLayout>
+  );
+}
+
 function OnboardingRoute() {
   const { session, profile, loading } = useAuth();
   if (loading || (session && !profile)) return <FullPageSpinner />;
@@ -115,7 +159,18 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
       <Route path="/reset-password" element={<ResetRoute />} />
       <Route path="/onboarding" element={<OnboardingRoute />} />
-      <Route path="/" element={p(<Dashboard />)} />
+      <Route path="/" element={<RootRoute />} />
+      <Route
+        path="/about"
+        element={
+          <PublicLayout>
+            <Home />
+          </PublicLayout>
+        }
+      />
+      <Route path="/guide" element={<PublicOrApp><Guide /></PublicOrApp>} />
+      <Route path="/how-it-works" element={<Navigate to="/guide" replace />} />
+      <Route path="/demo" element={<Navigate to="/guide" replace />} />
       <Route path="/scan" element={p(<ScanPage />)} />
       <Route path="/scan/:id" element={p(<ScanReview />)} />
       <Route path="/add" element={p(<AddItem />)} />
@@ -124,7 +179,7 @@ function AppRoutes() {
       <Route path="/recipes" element={p(<Recipes />)} />
       <Route path="/stats" element={p(<Stats />)} />
       <Route path="/settings" element={p(<Settings />)} />
-      <Route path="*" element={p(<NotFound />)} />
+      <Route path="*" element={<PublicOrApp><NotFound /></PublicOrApp>} />
     </Routes>
   );
 }
@@ -137,7 +192,9 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <ItemsProvider>
-            <AppRoutes />
+            <TourProvider>
+              <AppRoutes />
+            </TourProvider>
           </ItemsProvider>
         </AuthProvider>
       </ToastProvider>
