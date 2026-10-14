@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite';
@@ -11,7 +13,7 @@ const PUBLIC_PATHS = ['/', '/signup'];
 
 /**
  * Site files that depend on where the build is deployed:
- * - robots.txt and sitemap.xml (written into dist/),
+ * - robots.txt, sitemap.xml and llms.txt (written into dist/; llms.txt comes from site/llms.txt),
  * - absolute Open Graph / Twitter URLs and a preconnect to Supabase in index.html.
  * The site URL comes from SITE_URL, or from Netlify's URL (production) / DEPLOY_PRIME_URL (previews).
  * Netlify deploy previews and branch deploys are marked "Disallow: /" so only production is indexed.
@@ -53,6 +55,10 @@ function siteFiles(env: Record<string, string>): Plugin {
         ? ['User-agent: *', ...PRIVATE_PATHS.map((p) => `Disallow: ${p}`), ...(siteUrl ? ['', `Sitemap: ${siteUrl}/sitemap.xml`] : [])]
         : ['# Preview deploy: not for search engines.', 'User-agent: *', 'Disallow: /'];
       this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots.join('\n') + '\n' });
+
+      // llms.txt (https://llmstxt.org): a plain-language summary of the app for AI assistants.
+      const llms = fs.readFileSync(path.resolve(import.meta.dirname, 'site/llms.txt'), 'utf8').replaceAll('{{SITE_URL}}', siteUrl);
+      this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llms });
 
       if (siteUrl && indexable) {
         const urls = PUBLIC_PATHS.map((p) => `  <url><loc>${siteUrl}${p}</loc></url>`).join('\n');
@@ -97,11 +103,23 @@ export default defineConfig(({ mode }) => {
             { src: '/icons/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
           // Shown in the richer install dialog (Chrome, Edge). Not precached.
-        screenshots: [
-          { src: '/screenshots/dashboard-narrow.webp', sizes: '720x1560', type: 'image/webp', form_factor: 'narrow', label: 'Your food sorted by what to use first' },
-          { src: '/screenshots/dashboard-wide.webp', sizes: '1440x900', type: 'image/webp', form_factor: 'wide', label: 'Dashboard with items to use today and soon' },
-        ],
-        shortcuts: [
+          screenshots: [
+            {
+              src: '/screenshots/dashboard-narrow.webp',
+              sizes: '720x1560',
+              type: 'image/webp',
+              form_factor: 'narrow',
+              label: 'Your food sorted by what to use first',
+            },
+            {
+              src: '/screenshots/dashboard-wide.webp',
+              sizes: '1440x900',
+              type: 'image/webp',
+              form_factor: 'wide',
+              label: 'Dashboard with items to use today and soon',
+            },
+          ],
+          shortcuts: [
             { name: 'Scan a receipt', short_name: 'Scan', url: '/scan?type=receipt', icons: [{ src: '/icons/pwa-192.png', sizes: '192x192' }] },
             { name: 'Add an item', short_name: 'Add', url: '/add', icons: [{ src: '/icons/pwa-192.png', sizes: '192x192' }] },
             { name: 'Do I have it?', short_name: 'Check', url: '/check', icons: [{ src: '/icons/pwa-192.png', sizes: '192x192' }] },
@@ -110,7 +128,7 @@ export default defineConfig(({ mode }) => {
         injectManifest: {
           globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
           // Only for link previews and search engines; not needed offline.
-          globIgnores: ['og-image.png', 'screenshots/**', 'robots.txt', 'sitemap.xml', 'humans.txt'],
+          globIgnores: ['og-image.png', 'screenshots/**', 'robots.txt', 'sitemap.xml', 'humans.txt', 'llms.txt'],
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         },
         devOptions: { enabled: false },
