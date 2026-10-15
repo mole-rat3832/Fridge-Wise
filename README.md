@@ -138,6 +138,8 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 - **Strict browser headers** from `netlify.toml`: a Content Security Policy that allows only this site, Supabase and Turnstile, plus `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy and a Permissions-Policy that allows only the camera (scanning) and the microphone (voice input), for this site only.
 - **Your data is yours.** Export items and history as CSV, or delete the account and everything in it from Settings.
 
+Found a security problem? Please report it privately, as described in [SECURITY.md](SECURITY.md), instead of opening a public issue.
+
 ---
 
 ## Tech stack
