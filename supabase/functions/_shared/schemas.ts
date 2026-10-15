@@ -7,7 +7,11 @@ import { AI_WRITABLE_FIELDS, CATEGORIES, LOCATIONS, PRINTED_DATE_TYPES, UNITS } 
 
 type JsonSchema = Record<string, unknown>;
 
-const num01: JsonSchema = { type: 'number', minimum: 0, maximum: 1 };
+// No minimum/maximum here and no maxItems on the long lists below: Gemini rejects a schema
+// that is too complex to enforce ("Request contains an invalid argument"), and number bounds
+// repeated across every line of a receipt or command did exactly that. The code still clamps
+// every confidence to 0..1 and Zod still caps the list lengths.
+const num01: JsonSchema = { type: 'number', description: 'From 0 to 1.' };
 const nullableString = (description: string): JsonSchema => ({ type: ['string', 'null'], description });
 const nullableNumber = (description: string): JsonSchema => ({ type: ['number', 'null'], description });
 const confidenceObject = (keys: string[]): JsonSchema => ({
@@ -37,7 +41,6 @@ export const receiptJsonSchema: JsonSchema = {
     purchase_date_confidence: num01,
     items: {
       type: 'array',
-      maxItems: 120,
       description: 'Every purchased line in order. Leave out subtotal, total, payment, change and loyalty-balance lines.',
       items: {
         type: 'object',
@@ -157,7 +160,6 @@ export const commandJsonSchema: JsonSchema = {
   properties: {
     operations: {
       type: 'array',
-      maxItems: 30,
       items: {
         type: 'object',
         properties: {
