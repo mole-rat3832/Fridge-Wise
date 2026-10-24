@@ -52,8 +52,14 @@ FridgeWise is in **beta** (the header says so next to the name).
 - **Recipes** shaped by that chat and the food closest to expiring. *I made this* updates the ingredients (previewed, undoable).
 - **Do I have it?** A shopping check that also works offline from the last saved list.
 
+**Share a kitchen**
+- **Households**: create a household and invite the people you live with by email. Everyone in it sees and updates the same food list, and anything one person scans, adds or uses up shows up for the others right away (Supabase Realtime, with a once-a-minute check as a fallback). There is no limit on how many households you create or how many people join.
+- **A security check for every household and every invite**: creating a household or sending an invite needs a Cloudflare Turnstile token, checked on the server by the `households` edge function.
+- **Switch kitchens** with the *Kitchen* picker in the sidebar (or under the header on phones). The dashboard, Add item, scan review, plain-language updates, recipes, *Do I have it?* and Stats all follow the open kitchen. Scan review and Add item let you pick where the food goes, and the person who added an item can move it between kitchens.
+- **What stays yours**: scan photos, recipe ideas, CSV exports and your daily AI allowance. Members see each other's names and emails. Anyone can edit or use up household items; only the person who added an item, or the owner, can delete it. The owner can rename the household, remove people and delete it (items go back to whoever added them); anyone can leave. Invites expire after 30 days and never reveal whether an email has an account.
+
 **See the difference**
-- **Stats**: items used vs. tossed and money saved vs. wasted, weekly and all-time, as charts or tables.
+- **Stats**: items used vs. tossed and money saved vs. wasted, weekly and all-time, as charts or tables (per kitchen).
 - **Item history** with every change, who made it (AI or you), old → new values, confidence, and Undo.
 
 **Works everywhere**
@@ -80,7 +86,8 @@ flowchart LR
     Auth["Auth<br/>+ Turnstile CAPTCHA"]
     DB[("Postgres<br/>RLS, triggers, RPCs")]
     Storage[("Storage<br/>private scan photos")]
-    Fn["Edge Functions<br/>scan-image, ai-command,<br/>suggest-recipes, send-reminders"]
+    Fn["Edge Functions<br/>scan-image, ai-command,<br/>suggest-recipes, households,<br/>send-reminders"]
+    RT["Realtime<br/>household kitchens"]
     Cron["pg_cron + pg_net"]
   end
   Gemini["Google Gemini"]
@@ -91,6 +98,9 @@ flowchart LR
   UI -- "upload photo" --> Storage
   UI -- "user token" --> Fn
   Fn -- "image + JSON schema" --> Gemini
+  Fn -- "CAPTCHA check" --> Turnstile["Cloudflare Turnstile"]
+  DB -- "changes (same RLS)" --> RT
+  RT -- "live updates" --> UI
   Fn -- "as the user (RLS)" --> DB
   Cron -- "hourly, cron secret" --> Fn
   Fn -- "VAPID-signed" --> Push
@@ -122,18 +132,19 @@ Gemini output ──► Zod validation ──► normalization ──► staging
 2. **Text in images is data.** The system prompt tells Gemini to ignore any instructions printed in images or item names, and the code only accepts schema fields. In commands and recipes the model only sees short refs (`i3`, `r2`) for items; refs that weren't sent are rejected. Recipe-chat messages are used only to choose recipes: they can't change the model's role, rules or output format, and the chat never edits your food.
 3. **A whitelist the database enforces.** The AI may only change `name, brand, category, storage_location, quantity, unit, price_cents, barcode, purchase_date, expiration_date, expiration_source, opened_at, notes`. The RPCs (`confirm_scan`, `apply_ai_changes`) raise an error for anything else. They never touch `id`, `user_id`, `created_at`, scan links or `user_locked_fields`. Status changes only through user-confirmed `mark_used` / `mark_wasted`. **There is no delete operation.**
 4. **The user always wins.** When you edit a field yourself, a database trigger adds it to `user_locked_fields`. The AI RPCs run `set_config('app.edit_source', 'ai', true)`, so their own writes don't lock anything. They skip locked fields and report the skips ("Expiration date stays Oct 20, you set it yourself").
-5. **One transaction, fully logged.** `apply_ai_changes` checks ownership through Row Level Security and writes one `ai_edit_log` row per changed field (old value, new value, confidence, model, reason) under a single `batch_id`. Moving an item to the freezer or opening it recalculates the expiration date from the shelf-life table unless you locked that date. Using the last of an item marks it used.
-6. **Undo.** `undo_ai_batch(batch_id)` restores the old value only where the field still has the AI's value. Fields you changed since are left alone and listed. Items a batch created are removed only if they're untouched.
+5. **One transaction, fully logged.** `apply_ai_changes` checks access through Row Level Security (your own kitchen and your households; `p_household_id` says where new items go) and writes one `ai_edit_log` row per changed field (old value, new value, confidence, model, reason) under a single `batch_id`. Moving an item to the freezer or opening it recalculates the expiration date from the shelf-life table unless you locked that date. Using the last of an item marks it used.
+6. **Undo.** `undo_ai_batch(batch_id)` restores the old value only where the field still has the AI's value, and only for your own changes (household members see each other's history but can't undo it). Fields you changed since are left alone and listed. Items a batch created are removed only if they're untouched.
 7. **Quotas.** Each user gets 40 scans and 60 AI requests (commands + recipes) per day, counted in an append-only `ai_usage` table by `claim_ai_quota` before every Gemini call. One photo can be processed at most 3 times. The meters in the app read `ai_usage_today()`, which counts the same way and returns the next reset (midnight in the user's timezone).
 
 ---
 
 ## Security and privacy
 
-- **Row Level Security on every table.** User-owned rows require `user_id = auth.uid()`. Grants are explicit, and the `anon` role has no table access.
-- **The browser only has the publishable key.** The app's edge functions create their Supabase client with the caller's `Authorization` header, so RLS applies to them too. The secret (service role) key is used **only** in `send-reminders`, which only pg_cron can call.
+- **Row Level Security on every table.** User-owned rows require `user_id = auth.uid()`. Food items are also visible to the members of the household they're in (`household_id`), and their history to the same people. Grants are explicit, and the `anon` role has no table access.
+- **Households only through RPCs.** Users have no direct access to `households`, `household_members` or `household_invites`. Every household action is an RPC that acts only for `auth.uid()` and checks membership; creating a household and inviting someone are closed to everyone but the service role, so the CAPTCHA can't be skipped. Invites are matched to the invitee's confirmed email, and the answer never says whether an account exists.
+- **The browser only has the publishable key.** The app's edge functions create their Supabase client with the caller's `Authorization` header, so RLS applies to them too. The secret (service role) key is used only in `send-reminders`, which only pg_cron can call, and in `households`, only after checking the user's token and the CAPTCHA, to call those two RPCs.
 - **No secrets in the repo.** The Gemini API key and the Turnstile secret key are entered in the Supabase dashboard. The cron secret is generated inside Postgres and the Web Push keys by `send-reminders`; both are kept in Supabase Vault.
-- **Bot protection.** Cloudflare Turnstile on sign up, sign in and password reset, checked by Supabase Auth.
+- **Bot protection.** Cloudflare Turnstile on sign up, sign in and password reset (checked by Supabase Auth), and on creating a household and every invite (checked by the `households` edge function).
 - **Photos** are in a private bucket, readable only from the owner's folder, and deleted after 30 days.
 - **Strict browser headers** from `netlify.toml`: a Content Security Policy that allows only this site, Supabase and Turnstile, plus `X-Frame-Options: DENY`, HSTS, `nosniff`, a strict referrer policy and a Permissions-Policy that allows only the camera (scanning) and the microphone (voice input), for this site only.
 - **Your data is yours.** Export items and history as CSV, or delete the account and everything in it from Settings.
@@ -147,7 +158,7 @@ Found a security problem? Please report it privately, as described in [SECURITY.
 | | |
 |---|---|
 | Frontend | React 19, Vite 8, TypeScript, Tailwind CSS 4, React Router, Recharts, vite-plugin-pwa (custom service worker) |
-| Backend | Supabase: Postgres + Row Level Security, Auth, Storage, Edge Functions (Deno), pg_cron + pg_net, Vault |
+| Backend | Supabase: Postgres + Row Level Security, Auth, Storage, Edge Functions (Deno), Realtime, pg_cron + pg_net, Vault |
 | AI | Google Gemini (`gemini-3.8-flash` by default), called only from Edge Functions |
 | Hosting | Netlify (static build); any static host works |
 | Tests | Vitest, pgTAP |
@@ -162,8 +173,8 @@ src/types/database.ts    Generated Supabase types
 public/                  Icons, og-image.png (link previews), screenshots/ (homepage + install dialog), humans.txt
 site/llms.txt            Summary of the app for AI assistants, served at /llms.txt
 supabase/migrations/     All schema changes (the database matches these files)
-supabase/functions/      scan-image, ai-command, suggest-recipes, send-reminders (+ _shared)
-supabase/tests/          pgTAP database tests (68 checks)
+supabase/functions/      scan-image, ai-command, suggest-recipes, households, send-reminders (+ _shared)
+supabase/tests/          pgTAP database tests (125 checks)
 tests/unit/              Vitest tests for normalization and command planning
 scripts/                 generate-icons.mjs, generate-og-image.mjs, generate-vapid-keys.mjs
 netlify.toml             Build settings, public build variables, SPA redirect, security + cache headers
@@ -185,6 +196,8 @@ npx supabase functions serve --env-file supabase/functions/.env   # GEMINI_API_K
 npm run dev                         # http://localhost:5173
 ```
 
+To try households locally, use Cloudflare's [test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/), which always pass: `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` in `.env.local` and `TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` in `supabase/functions/.env`.
+
 ### Demo accounts
 
 Demo data (about 20 items with mixed expiration dates, plus a few weeks of history for Stats) is only for demo accounts. An account becomes one when an admin sets `demo: true` in its app metadata, which users can't change themselves:
@@ -199,7 +212,7 @@ After the next sign-in, that account sees **Start with demo data** in onboarding
 
 ## Deploy
 
-Only two values are secret: the **Gemini API key** and the **Turnstile secret key**. Both are entered in the Supabase dashboard and never go into this repo, `.env` or Netlify.
+Only two values are secret: the **Gemini API key** and the **Turnstile secret key**. Both are entered in the Supabase dashboard (the Turnstile secret twice: in Auth's bot protection and as the `TURNSTILE_SECRET_KEY` edge function secret) and never go into this repo, `.env` or Netlify.
 
 ### 1. Supabase
 
@@ -207,10 +220,10 @@ Only two values are secret: the **Gemini API key** and the **Turnstile secret ke
 npx supabase login
 npx supabase link --project-ref <project-ref>
 npx supabase db push        # tables, RLS, RPCs, storage bucket, shelf-life data, cron jobs
-npx supabase functions deploy scan-image ai-command suggest-recipes send-reminders --no-verify-jwt
+npx supabase functions deploy scan-image ai-command suggest-recipes households send-reminders --no-verify-jwt
 ```
 
-`--no-verify-jwt` is intentional: each function checks the caller itself. The three app functions check the user's token, and `send-reminders` checks the cron secret. Supabase recommends this setup with the new publishable/secret API keys.
+`--no-verify-jwt` is intentional: each function checks the caller itself. The four app functions check the user's token, and `send-reminders` checks the cron secret. Supabase recommends this setup with the new publishable/secret API keys.
 
 Then, once, in the SQL editor:
 
@@ -226,6 +239,7 @@ The `cron_secret` Vault entry is created by the migration with `gen_random_bytes
 | Secret | What it is |
 |---|---|
 | `GEMINI_API_KEY` | **Required for the AI features.** Your Google Gemini API key. Until it is set, scans and commands answer "The AI features are not set up yet" and everything else works. |
+| `TURNSTILE_SECRET_KEY` | **Required for households.** The same Turnstile secret key as in Auth's bot protection. Until it is set, creating a household and inviting people answer "Households are not set up yet"; joining, leaving and everything else work. |
 | `GEMINI_MODEL` | Optional, default `gemini-3.8-flash` (`gemini-3.5-flash-lite` is the cheaper option). |
 | `VAPID_SUBJECT` | Optional. `mailto:you@yourdomain.com`, the contact address push services see. |
 | `ALLOWED_ORIGINS` | Optional. Comma-separated origins for CORS, e.g. `https://fridgewise.netlify.app`. |
@@ -267,6 +281,7 @@ What `netlify.toml` and the build add:
 1. In the Cloudflare dashboard (**Turnstile → your widget → Hostname management**), add your Netlify domain, e.g. `fridgewise.netlify.app` (subdomains such as deploy previews are included), and any custom domain.
 2. Put the **site key** in `VITE_TURNSTILE_SITE_KEY` (already in `netlify.toml`) and deploy.
 3. In Supabase go to **Authentication → Bot and Abuse Protection**, turn on **Enable CAPTCHA protection**, choose **Cloudflare Turnstile**, paste the **secret key**, and click **Save**.
+4. Add the same **secret key** as the `TURNSTILE_SECRET_KEY` edge function secret (**Edge Functions → Secrets**). The `households` function uses it to check the CAPTCHA on new households and invites.
 
 Do step 2 before step 3: once CAPTCHA protection is on, Supabase rejects sign-ins without a token. The app shows the widget on sign up, sign in and password reset, passes `options.captchaToken`, and resets the widget after every attempt (tokens are single-use).
 
@@ -306,13 +321,14 @@ Migrations are in `supabase/migrations`. The tables follow the brief, with these
 - `recipes.time_minutes`, `servings`, `model`, `made_at`
 - `ai_usage`: an append-only quota counter. It isn't `scans`, because deleting a scan must not give quota back.
 - `app_public_config`: public settings the app reads (the Web Push public key).
+- `households`, `household_members` (one `owner` per household; the longest-standing member takes over when the owner goes) and `household_invites` (lowercased email, 30-day lifetime), plus `food_items.household_id` (null = the adder's own kitchen). Deleting a household sends its items back to the people who added them; deleting an account hands the items you added to households to each household's owner. `user_stats` has one set of rows per kitchen.
 - Composite foreign keys keep `scan_items.user_id` consistent with its scan. Every foreign key is indexed.
 
 ---
 
 ## Notes
 
-- Gemini 3.6 and newer ignore `temperature`; it's still sent (0.15) for older models. If the API rejects `responseFormat`, the client retries once with `responseMimeType` + `responseJsonSchema`.
+- Gemini 3.6 and newer ignore `temperature`; it's still sent (0.15) for older models. If the API rejects a request as invalid, the client steps down one request at a time: `responseMimeType` + `responseJsonSchema`, then a simplified schema, then plain JSON mode with the schema in the prompt. The schemas sent to Gemini leave out number ranges and long list caps (Gemini rejects schemas that are too complex); Zod and the normalizers still enforce them.
 - Shelf-life values are based on USDA FoodKeeper guidance (the conservative end of each range). They're estimates, so always trust the package and your senses.
 - Email reminders are not included yet; `profiles.notify_email` is ready for them.
 - Migrations that contain `delete` statements (`undo_rpc`, `account_and_demo`, `cleanup_jobs`) are kept in their own files, because the Supabase connector asks for confirmation before running them.

@@ -3,7 +3,7 @@
 // never relies on color alone (the brand palette has only one chromatic hue for two series).
 import { ChartColumn, CircleCheck, Gauge, House, PiggyBank, Sparkles, Table, Trash, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { EmptyState, ErrorNote, PageHeader, Spinner } from '../components/ui';
@@ -14,6 +14,7 @@ import { formatMoney } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import type { UserStatsRow } from '../types/app';
 
 const USED = '#6BAA75';
@@ -190,19 +191,22 @@ function WeeklyChart({
 export function Stats() {
   const { today, locale, user } = useAuth();
   const { refresh } = useItems();
+  const { activeId, active } = useKitchen();
   const [rows, setRows] = useState<UserStatsRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [demoBusy, setDemoBusy] = useState(false);
 
-  async function load() {
-    const { data, error: err } = await supabase.from('user_stats').select('*');
+  // Stats follow the open kitchen: your own, or the household's (everyone's items together).
+  const load = useCallback(async () => {
+    const base = supabase.from('user_stats').select('*');
+    const { data, error: err } = await (activeId ? base.eq('household_id', activeId) : base.is('household_id', null));
     if (err) setError(err.message);
     setRows(data ?? []);
-  }
+  }, [activeId]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const allTime = rows?.find((r) => r.period === 'all_time');
   const weeks = useMemo<WeekPoint[]>(() => {
@@ -252,7 +256,11 @@ export function Stats() {
           </pattern>
         </defs>
       </svg>
-      <PageHeader title="Stats" subtitle="What you've used and what went to waste." icon={<ChartColumn size={24} />} />
+      <PageHeader
+        title="Stats"
+        subtitle={active ? `What everyone in ${active.name} has used and what went to waste.` : "What you've used and what went to waste."}
+        icon={<ChartColumn size={24} />}
+      />
       {error && <ErrorNote>{error}</ErrorNote>}
       {rows === null ? (
         <div className="flex justify-center py-16">

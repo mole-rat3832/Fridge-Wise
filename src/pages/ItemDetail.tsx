@@ -1,11 +1,12 @@
-import { ArrowLeft, Bot, Check, ClockArrowUp, LockOpen, PackageOpen, Pencil, Trash, Undo2, UserRound } from 'lucide-react';
+import { ArrowLeft, Bot, Check, ClockArrowUp, LockOpen, PackageOpen, Pencil, Trash, Undo2, UserRound, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { formFromItem, ItemForm, formToColumns, type ItemFormValues } from '../components/ItemForm';
+import { KitchenSelect } from '../components/Kitchen';
 import { EmptyState, ErrorNote, FreshnessBadge, Sheet, Spinner } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
 import { useUndo } from '../hooks/useUndo';
-import { errorMessage, recordUse, recordWaste } from '../lib/api';
+import { errorMessage, householdDetails, recordUse, recordWaste, type HouseholdMember } from '../lib/api';
 import { AI_WRITABLE_FIELDS, CATEGORY_ICON, CATEGORY_LABEL, FIELD_LABEL, LOCATION_LABEL, SOURCE_LABEL, UNIT_LABEL, formatQuantity } from '../lib/catalog';
 import { dateOf, expiryPhrase, formatDate, formatDateTime, freshness } from '../lib/dates';
 import { formatMoney } from '../lib/format';
@@ -13,6 +14,7 @@ import { batchTitle, canUndo, describeRow, groupHistory } from '../lib/history';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { OWN_KITCHEN, useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 import type { EditLogRow, FoodItem } from '../types/app';
 import type { TablesUpdate } from '../types/database';
@@ -25,8 +27,9 @@ const FRACTIONS = [
 
 export function ItemDetail() {
   const { id } = useParams<{ id: string }>();
-  const { profile, today, locale, timeZone } = useAuth();
+  const { profile, today, locale, timeZone, user } = useAuth();
   const { refresh: refreshItems } = useItems();
+  const { households } = useKitchen();
   const toast = useToast();
   const navigate = useNavigate();
   const online = useOnline();
@@ -41,6 +44,8 @@ export function ItemDetail() {
   const [amount, setAmount] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  // People in the item's household, to say who added it and who changed what.
+  const [members, setMembers] = useState<HouseholdMember[]>([]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -51,6 +56,13 @@ export function ItemDetail() {
     setItem(it ?? null);
     setHistory(log ?? []);
     setLoading(false);
+    if (it?.household_id) {
+      householdDetails(it.household_id)
+        .then((d) => setMembers(d.members))
+        .catch(() => setMembers([]));
+    } else {
+      setMembers([]);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -79,6 +91,15 @@ export function ItemDetail() {
   const status = freshness(current.expiration_date, today, profile?.reminder_days_before ?? 2);
   const Icon = CATEGORY_ICON[current.category];
   const active = current.status === 'active';
+  const household = current.household_id ? households.find((h) => h.id === current.household_id) : undefined;
+  const isMine = current.user_id === user?.id;
+  // Only the person who added an item, or the household owner, can delete it (the database checks too).
+  const canDelete = isMine || household?.role === 'owner';
+  const nameOf = (userId: string) => {
+    if (userId === user?.id) return 'you';
+    const m = members.find((x) => x.user_id === userId);
+    return m ? m.display_name?.trim() || m.email : 'a former member';
+  };
 
   function startEdit() {
     setForm(formFromItem(current, timeZone));
@@ -151,12 +172,27 @@ export function ItemDetail() {
     else await load();
   }
 
-  async function remove() {
+  async function move(next: string | null) {
+    if (next === current.household_id) return;
     setBusy(true);
-    const { error: err } = await supabase.from('food_items').delete().eq('id', current.id);
+    const { error: err } = await supabase.from('food_items').update({ household_id: next }).eq('id', current.id);
     setBusy(false);
     if (err) {
       toast.show(errorMessage(err), { tone: 'error' });
+      return;
+    }
+    await Promise.all([load(), refreshItems()]);
+    const where = next ? (households.find((h) => h.id === next)?.name ?? 'the household') : OWN_KITCHEN.toLowerCase();
+    toast.show(`${current.name} moved to ${where}.`, { tone: 'success' });
+  }
+
+  async function remove() {
+    setBusy(true);
+    const { data, error: err } = await supabase.from('food_items').delete().eq('id', current.id).select('id');
+    setBusy(false);
+    if (err || !data?.length) {
+      toast.show(err ? errorMessage(err) : 'Only the person who added this item, or the household owner, can delete it.', { tone: 'error' });
+      setConfirmDelete(false);
       return;
     }
     await refreshItems();
@@ -226,6 +262,16 @@ export function ItemDetail() {
               <dt className="text-fg-2">Price</dt>
               <dd className="font-semibold">{formatMoney(current.price_cents, locale)}</dd>
             </div>
+            {(current.household_id || households.length > 0) && (
+              <div className="col-span-2 sm:col-span-3">
+                <dt className="text-fg-2">Kitchen</dt>
+                <dd className="flex flex-wrap items-center gap-x-2 font-semibold">
+                  {current.household_id && <Users size={15} aria-hidden />}
+                  {current.household_id ? (household?.name ?? 'A shared kitchen') : OWN_KITCHEN}
+                  {current.household_id && <span className="font-normal text-fg-2">· added by {nameOf(current.user_id)}</span>}
+                </dd>
+              </div>
+            )}
             {current.barcode && (
               <div>
                 <dt className="text-fg-2">Barcode</dt>
@@ -271,6 +317,23 @@ export function ItemDetail() {
           </div>
         )}
 
+        {active && !editing && isMine && households.length > 0 && (
+          <div className="mt-5 flex flex-col gap-2 rounded-xl bg-tint p-3 sm:flex-row sm:items-center">
+            <label htmlFor="move-kitchen" className="text-sm font-semibold">
+              Move to
+            </label>
+            <KitchenSelect
+              id="move-kitchen"
+              value={current.household_id}
+              onChange={(next) => void move(next)}
+              households={households}
+              className="input sm:max-w-xs"
+              disabled={busy || !online}
+            />
+            <p className="text-xs text-fg-2">Everyone in a household can see and update its items.</p>
+          </div>
+        )}
+
         {active && !editing && (
           <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
             <button type="button" className="btn btn-primary" disabled={busy || !online} onClick={() => void act(() => recordUse(current.id), `${current.name} marked as used.`)}>
@@ -311,6 +374,9 @@ export function ItemDetail() {
                   <p className="font-semibold">
                     {batchTitle(b)}
                     {b.source !== 'user' && <span className="ml-2 text-xs font-bold uppercase tracking-wide text-fg-2">AI</span>}
+                    {current.household_id && b.rows[0] && b.rows[0].user_id !== user?.id && (
+                      <span className="ml-2 text-sm font-normal text-fg-2">by {nameOf(b.rows[0].user_id)}</span>
+                    )}
                   </p>
                   <time className="text-xs text-fg-2" dateTime={b.createdAt}>
                     {formatDateTime(b.createdAt, locale, timeZone)}
@@ -330,7 +396,7 @@ export function ItemDetail() {
                   {b.reverted ? (
                     <span className="badge badge-neutral">Undone</span>
                   ) : (
-                    canUndo(b) && (
+                    canUndo(b) && b.rows.every((r) => r.user_id === user?.id) && (
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => void undo(b.batchId)} disabled={!online}>
                         <Undo2 size={16} aria-hidden data-anim="spin" /> Undo
                       </button>
@@ -344,13 +410,15 @@ export function ItemDetail() {
         )}
       </section>
 
-      <section className="card p-4 sm:p-6">
-        <h2 className="font-bold">Delete item</h2>
-        <p className="mt-1 text-sm text-fg-2">Only for mistakes. To keep your stats right, use "Used" or "Tossed" instead.</p>
-        <button type="button" className="btn btn-secondary mt-3" onClick={() => setConfirmDelete(true)} disabled={!online}>
-          <Trash size={16} aria-hidden data-anim="wiggle" /> Delete
-        </button>
-      </section>
+      {canDelete && (
+        <section className="card p-4 sm:p-6">
+          <h2 className="font-bold">Delete item</h2>
+          <p className="mt-1 text-sm text-fg-2">Only for mistakes. To keep your stats right, use "Used" or "Tossed" instead.</p>
+          <button type="button" className="btn btn-secondary mt-3" onClick={() => setConfirmDelete(true)} disabled={!online}>
+            <Trash size={16} aria-hidden data-anim="wiggle" /> Delete
+          </button>
+        </section>
+      )}
 
       <Sheet
         open={useSheet}
@@ -405,7 +473,9 @@ export function ItemDetail() {
           </>
         }
       >
-        <p>{current.name} will be removed from your list. This can't be undone.</p>
+        <p>
+          {current.name} will be removed from {current.household_id ? `${household?.name ?? 'the household'} for everyone` : 'your list'}. This can't be undone.
+        </p>
       </Sheet>
     </div>
   );

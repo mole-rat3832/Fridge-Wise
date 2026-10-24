@@ -77,6 +77,11 @@ const STEPS: TourStep[] = [
     body: 'Food used versus thrown away, and money saved versus wasted, by week and all-time.',
   },
   {
+    target: 'nav-households',
+    title: 'Share a kitchen',
+    body: 'Live with other people? Create a household and invite them by email. Everyone sees the same food, and anything one of you scans or adds shows up for the others right away.',
+  },
+  {
     target: 'nav-settings',
     title: 'Make it yours',
     body: 'Turn on morning reminders, set your timezone, change the look (dark mode, accent color, text size, contrast), see your daily AI limits and export your data.',

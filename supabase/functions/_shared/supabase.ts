@@ -83,3 +83,16 @@ export async function claimQuota(supabase: SupabaseClient, kind: 'scan' | 'comma
     );
   }
 }
+
+/**
+ * Throws a clear 404 unless the caller is in the household. (RLS would hide its items anyway;
+ * this gives a useful message and is checked before any AI quota is used.)
+ */
+export async function assertHouseholdMember(supabase: SupabaseClient, householdId: string): Promise<void> {
+  const { data, error } = await supabase.rpc('my_households');
+  if (error) throw new Error(`household check failed: ${error.message}`);
+  const ids = ((data ?? []) as Array<{ id: string }>).map((h) => h.id);
+  if (!ids.includes(householdId)) {
+    throw new HttpError(404, 'That household was not found. You may have left it.', 'household_not_found');
+  }
+}

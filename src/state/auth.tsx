@@ -117,8 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         if (id) {
           try {
-            localStorage.removeItem(`fw-items:${id}`);
-            localStorage.removeItem(`fw-profile:${id}`);
+            for (const k of Object.keys(localStorage)) {
+              if (/^fw-(items|profile|kitchen|households):/.test(k) && k.includes(id)) localStorage.removeItem(k);
+            }
             for (const k of Object.keys(sessionStorage)) if (k.includes(id)) sessionStorage.removeItem(k);
           } catch {
             /* storage unavailable */

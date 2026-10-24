@@ -1,8 +1,10 @@
-import { ChartColumn, ChefHat, CircleHelp, House, LogOut, Plus, ScanLine, Search, Settings, WifiOff } from 'lucide-react';
+import { ChartColumn, ChefHat, CircleHelp, House, LogOut, Plus, ScanLine, Search, Settings, Users, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useOnline } from '../hooks/useOnline';
 import { useAuth } from '../state/auth';
+import { useKitchen } from '../state/kitchen';
+import { KitchenSwitcher } from './Kitchen';
 import { UsageMeter } from './UsageMeter';
 
 // The wordmark is part of the logo: it keeps the brand font and size whatever font or text size is picked.
@@ -45,6 +47,7 @@ const NAV = [
   { to: '/check', label: 'Do I have it?', icon: Search, tour: 'nav-check' },
   { to: '/recipes', label: 'Recipes', icon: ChefHat, tour: 'nav-recipes' },
   { to: '/stats', label: 'Stats', icon: ChartColumn, tour: 'nav-stats' },
+  { to: '/households', label: 'Households', icon: Users, tour: 'nav-households' },
   { to: '/settings', label: 'Settings', icon: Settings, tour: 'nav-settings' },
   { to: '/guide', label: 'How to use', icon: CircleHelp, tour: 'help' },
 ];
@@ -111,6 +114,7 @@ export function OfflineBanner() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const { invites } = useKitchen();
   return (
     <div className="min-h-dvh lg:flex">
       {/* Desktop sidebar */}
@@ -118,6 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link to="/" className="mb-6 px-2">
           <Logo />
         </Link>
+        <KitchenSwitcher />
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1">
           {NAV.map(({ to, label, icon: Icon, end, tour }) => (
             <NavLink
@@ -135,6 +140,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <>
                   <Icon size={20} aria-hidden data-anim="bounce" className={isActive ? 'nav-pop' : undefined} />
                   {label}
+                  {to === '/households' && invites.length > 0 && (
+                    <span className="ml-auto rounded-full bg-lime px-2 py-0.5 text-xs font-extrabold text-ink">
+                      {invites.length}
+                      <span className="sr-only"> {invites.length === 1 ? 'invite' : 'invites'}</span>
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -146,21 +157,24 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
         <OfflineBanner />
         {/* Phone / tablet top bar */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-bg/90 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] backdrop-blur lg:hidden">
-          <Link to="/" aria-label="FridgeWise home">
-            <Logo size={28} />
-          </Link>
-          <div className="flex items-center">
-            <Link to="/guide" className={HEADER_ICON} aria-label="How to use FridgeWise" data-tour="help">
-              <CircleHelp size={22} data-anim="wiggle" />
+        <header className="sticky top-0 z-20 border-b border-line bg-bg/90 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] backdrop-blur lg:hidden">
+          <div className="flex items-center justify-between">
+            <Link to="/" aria-label="FridgeWise home">
+              <Logo size={28} />
             </Link>
-            <Link to="/add" className={HEADER_ICON} aria-label="Add item">
-              <Plus size={22} data-anim="turn" />
-            </Link>
-            <Link to="/settings" className={HEADER_ICON} aria-label="Settings" data-tour="nav-settings">
-              <Settings size={22} data-anim="spin" />
-            </Link>
+            <div className="flex items-center">
+              <Link to="/guide" className={HEADER_ICON} aria-label="How to use FridgeWise" data-tour="help">
+                <CircleHelp size={22} data-anim="wiggle" />
+              </Link>
+              <Link to="/add" className={HEADER_ICON} aria-label="Add item">
+                <Plus size={22} data-anim="turn" />
+              </Link>
+              <Link to="/settings" className={HEADER_ICON} aria-label="Settings" data-tour="nav-settings">
+                <Settings size={22} data-anim="spin" />
+              </Link>
+            </div>
           </div>
+          <KitchenSwitcher variant="bar" />
         </header>
 
         <main className="mx-auto w-full max-w-6xl px-4 py-5 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] mb-nav sm:px-6 lg:mb-0 lg:px-10 lg:py-8">

@@ -11,6 +11,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Home } from './pages/Home';
 import { AuthProvider, useAuth } from './state/auth';
 import { ItemsProvider } from './state/items';
+import { KitchenProvider } from './state/kitchen';
 import { ToastProvider } from './state/toast';
 
 // Pages other than the dashboard and sign-in are split into their own chunks (Stats pulls in the chart library).
@@ -19,6 +20,8 @@ const Guide = lazy(() => import('./pages/Guide').then((m) => ({ default: m.Guide
 const PrivacyPolicy = lazy(() => import('./pages/Legal').then((m) => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazy(() => import('./pages/Legal').then((m) => ({ default: m.TermsOfService })));
 const Eula = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Eula })));
+const Households = lazy(() => import('./pages/Households').then((m) => ({ default: m.Households })));
+const HouseholdPage = lazy(() => import('./pages/Households').then((m) => ({ default: m.HouseholdPage })));
 const ItemDetail = lazy(() => import('./pages/ItemDetail').then((m) => ({ default: m.ItemDetail })));
 const Onboarding = lazy(() => import('./pages/Onboarding').then((m) => ({ default: m.Onboarding })));
 const Recipes = lazy(() => import('./pages/Recipes').then((m) => ({ default: m.Recipes })));
@@ -202,6 +205,8 @@ function AppRoutes() {
       <Route path="/recipes" element={p(<Recipes />)} />
       <Route path="/stats" element={p(<Stats />)} />
       <Route path="/settings" element={p(<Settings />)} />
+      <Route path="/households" element={p(<Households />)} />
+      <Route path="/households/:id" element={p(<HouseholdPage />)} />
       <Route path="*" element={<PublicOrApp><NotFound /></PublicOrApp>} />
     </Routes>
   );
@@ -214,11 +219,13 @@ export default function App() {
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
-          <ItemsProvider>
-            <TourProvider>
-              <AppRoutes />
-            </TourProvider>
-          </ItemsProvider>
+          <KitchenProvider>
+            <ItemsProvider>
+              <TourProvider>
+                <AppRoutes />
+              </TourProvider>
+            </ItemsProvider>
+          </KitchenProvider>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>

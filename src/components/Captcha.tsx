@@ -1,5 +1,6 @@
-// Cloudflare Turnstile for Supabase Auth's built-in CAPTCHA support.
-// Tokens are single-use: call reset() after every auth attempt, successful or not.
+// Cloudflare Turnstile. Used for Supabase Auth's built-in CAPTCHA support (sign up, sign in, password
+// reset) and for creating households and inviting people (checked by the households edge function).
+// Tokens are single-use: call reset() after every attempt, successful or not.
 // When VITE_TURNSTILE_SITE_KEY is not set, nothing is rendered and no token is sent
 // (enable CAPTCHA protection in Supabase only after adding the site key).
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';

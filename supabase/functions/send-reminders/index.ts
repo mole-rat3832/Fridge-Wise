@@ -4,13 +4,14 @@
 //
 // reminders: one grouped Web Push notification per user for active items expiring within their
 //            reminder_days_before (in their timezone), logged to reminder_log (unique per day).
+//            Covers their own kitchen and every household they are in (household items name it).
 // cleanup:   deletes scan images older than 30 days through the Storage API.
 // setup:     makes sure the Web Push keys exist (they are created on first use otherwise).
 //
 // The cron secret and the VAPID keys live in Supabase Vault (see the reminders migration), so no
 // one has to copy them around. CRON_SECRET / VAPID_* edge function secrets, if set, take priority.
 //
-// This is the ONLY place the secret (service role) key is used.
+// The secret (service role) key is used here and, after its CAPTCHA check, in households.
 import * as webpush from 'jsr:@negrel/webpush@0.5.0';
 import { createClient as createSupabaseClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
@@ -19,7 +20,7 @@ import { readKey } from '../_shared/supabase.ts';
 interface DueRow {
   user_id: string;
   local_date: string;
-  items: Array<{ id: string; name: string; expiration_date: string; days_left: number }>;
+  items: Array<{ id: string; name: string; expiration_date: string; days_left: number; kitchen?: string | null }>;
   subscriptions: Array<{ id: string; endpoint: string; p256dh: string; auth: string }> | null;
 }
 
@@ -87,7 +88,7 @@ function describe(days: number): string {
 }
 
 function buildMessage(items: DueRow['items']) {
-  const shown = items.slice(0, 4).map((i) => `${i.name} (${describe(i.days_left)})`);
+  const shown = items.slice(0, 4).map((i) => `${i.name}${i.kitchen ? ` at ${i.kitchen}` : ''} (${describe(i.days_left)})`);
   const more = items.length > 4 ? `, +${items.length - 4} more` : '';
   const today = items.filter((i) => i.days_left <= 0).length;
   return {

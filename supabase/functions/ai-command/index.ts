@@ -1,7 +1,8 @@
 // ai-command: turn plain language ("I used half the milk") into a PROPOSED batch of changes.
 //
-// POST { text, previous?: { request, question } }
+// POST { text, previous?: { request, question }, household_id?: uuid | null }
 // Returns { operations, preview, clarification, problems, model }.
+// household_id picks the kitchen: null = the caller's own kitchen, otherwise a household they are in.
 // This function never writes to food_items. The app shows the preview, the user confirms,
 // and the app calls the apply_ai_changes RPC, which enforces the whitelist, skips locked
 // fields and logs everything under one batch_id (undoable).
@@ -11,7 +12,7 @@ import { generateJson, UNTRUSTED_INPUT_RULES } from '../_shared/gemini.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { diffDays, todayIn } from '../_shared/normalize.ts';
 import { Command, commandJsonSchema } from '../_shared/schemas.ts';
-import { claimQuota, getProfile, getUserContext } from '../_shared/supabase.ts';
+import { assertHouseholdMember, claimQuota, getProfile, getUserContext } from '../_shared/supabase.ts';
 
 const SYSTEM_PROMPT = `You are the inventory assistant inside FridgeWise, a food-waste app.
 The user describes what happened to their food in plain language. You get their current list of
@@ -38,6 +39,7 @@ const Body = z.object({
     .object({ request: z.string().max(500), question: z.string().max(600) })
     .nullable()
     .optional(),
+  household_id: z.string().uuid().nullable().optional(),
 });
 
 serve(async (req) => {
@@ -45,15 +47,19 @@ serve(async (req) => {
   if (!body.success) throw new HttpError(400, 'Please type what happened to your food (up to 500 characters).', 'bad_request');
 
   const { supabase, user } = await getUserContext(req);
+  const householdId = body.data.household_id ?? null;
+  if (householdId) await assertHouseholdMember(supabase, householdId);
   await claimQuota(supabase, 'command');
 
   const profile = await getProfile(supabase, user.id);
   const today = todayIn(profile.timezone);
 
-  const { data: rows, error } = await supabase
+  // Only the chosen kitchen's items (RLS also lets the caller see their households' kitchens).
+  const base = supabase
     .from('food_items')
     .select('id, name, brand, quantity, unit, storage_location, category, expiration_date, opened_at, user_locked_fields')
-    .eq('status', 'active')
+    .eq('status', 'active');
+  const { data: rows, error } = await (householdId ? base.eq('household_id', householdId) : base.is('household_id', null))
     .order('expiration_date', { ascending: true, nullsFirst: false })
     .limit(150);
   if (error) throw new Error(error.message);

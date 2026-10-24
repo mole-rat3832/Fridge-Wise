@@ -11,6 +11,7 @@ import { compressImage } from '../lib/image';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import type { Scan, ScanType } from '../types/app';
+import { useKitchen } from '../state/kitchen';
 
 type Step = 'idle' | 'compress' | 'upload' | 'read' | 'done';
 
@@ -22,6 +23,7 @@ const STEPS: Array<{ key: Exclude<Step, 'idle' | 'done'>; label: string }> = [
 
 export function ScanPage() {
   const { user, locale, timeZone } = useAuth();
+  const { active } = useKitchen();
   const navigate = useNavigate();
   const online = useOnline();
   const [params, setParams] = useSearchParams();
@@ -92,7 +94,15 @@ export function ScanPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader icon={<ScanLine size={24} data-anim="pop" />} title="Scan" subtitle="Photograph a grocery receipt or a single product. You'll review everything before it's added." />
+      <PageHeader
+        icon={<ScanLine size={24} data-anim="pop" />}
+        title="Scan"
+        subtitle={
+          active
+            ? `Photograph a grocery receipt or a single product. You'll review everything before it's added to ${active.name}. Your photo stays private.`
+            : "Photograph a grocery receipt or a single product. You'll review everything before it's added."
+        }
+      />
 
       <div className="card space-y-5 p-4 sm:p-6">
         <div role="radiogroup" aria-label="What are you scanning?" className="grid grid-cols-2 gap-2 rounded-2xl bg-tint p-1">

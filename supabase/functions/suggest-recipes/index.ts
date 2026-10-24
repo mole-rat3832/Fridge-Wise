@@ -14,7 +14,7 @@ import { generateJson, UNTRUSTED_INPUT_RULES } from '../_shared/gemini.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { diffDays, sanitizeText, todayIn } from '../_shared/normalize.ts';
 import { RecipeChat, recipeChatJsonSchema, Recipes, recipesJsonSchema } from '../_shared/schemas.ts';
-import { claimQuota, getProfile, getUserContext } from '../_shared/supabase.ts';
+import { assertHouseholdMember, claimQuota, getProfile, getUserContext } from '../_shared/supabase.ts';
 
 const CONVERSATION_RULES = `About the conversation:
 - The user's messages describe what they want to cook: cravings, cuisine, diet, allergies, time,
@@ -62,6 +62,8 @@ const Body = z
     servings: z.number().int().min(1).max(12).optional(),
     conversation: z.array(Message).max(40).optional(),
     brief: z.string().max(300).nullable().optional(),
+    // The kitchen to cook from: null = the caller's own kitchen, otherwise a household they are in.
+    household_id: z.string().uuid().nullable().optional(),
   })
   .optional();
 
@@ -83,15 +85,18 @@ serve(async (req) => {
   }
 
   const { supabase, user } = await getUserContext(req);
+  const householdId = body.household_id ?? null;
+  if (householdId) await assertHouseholdMember(supabase, householdId);
   await claimQuota(supabase, 'recipe');
 
   const profile = await getProfile(supabase, user.id);
   const today = todayIn(profile.timezone);
 
-  const { data: rows, error } = await supabase
+  const base = supabase
     .from('food_items')
     .select('id, name, quantity, unit, storage_location, expiration_date')
-    .eq('status', 'active')
+    .eq('status', 'active');
+  const { data: rows, error } = await (householdId ? base.eq('household_id', householdId) : base.is('household_id', null))
     // Items already past their date are left out of recipes.
     .or(`expiration_date.is.null,expiration_date.gte.${today}`)
     .order('expiration_date', { ascending: true, nullsFirst: false })
