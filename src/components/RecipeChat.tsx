@@ -5,6 +5,7 @@ import { ChefHat, RotateCcw, Send, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { errorMessage, recipeChat, type ChatMessage } from '../lib/api';
+import { useKitchen } from '../state/kitchen';
 import type { FoodItem } from '../types/app';
 import { TypingDots } from './ai-effects';
 import { ErrorNote, Spinner } from './ui';
@@ -94,6 +95,7 @@ export function RecipeChat({
   generating: boolean;
   onGenerate: (conversation: ChatMessage[], brief: string | null) => void;
 }) {
+  const { activeId } = useKitchen();
   const hello = useMemo(() => greeting(items, today), [items, today]);
   const [saved] = useState(() => load(userId));
   const [messages, setMessages] = useState<Message[]>(saved?.messages ?? []);
@@ -138,7 +140,7 @@ export function RecipeChat({
     try {
       const res = await recipeChat(
         next.map(({ role, text: t }) => ({ role, text: t })),
-        { servings, brief },
+        { servings, brief, householdId: activeId },
       );
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', text: res.reply, quick: res.quick_replies, fresh: true }]);
       setBrief(res.brief);

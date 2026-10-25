@@ -43,6 +43,8 @@ This is a student project, so there is no bug bounty.
 Examples worth reporting:
 
 - reading or changing another user's items, scans, photos, history or profile;
+- seeing or changing a household you're not in, accepting an invite meant for someone else, or finding out whether an email has an account through invites;
+- creating households or sending invites without passing the CAPTCHA;
 - calling an edge function or RPC without being signed in, or as someone else;
 - getting around the daily AI limits or the limit of 3 attempts per photo;
 - prompt injection, where text in a photo or a command makes the AI change something it shouldn't, or write a field outside the allowed list;
@@ -71,11 +73,12 @@ If you follow these rules and act in good faith, your research will be treated a
 
 The [Security and privacy](README.md#security-and-privacy) section of the README has the details. In short:
 
-- **Row Level Security on every table.** Each user can only read and change their own rows. The `anon` role has no table access.
-- **The browser only has the publishable key.** The edge functions run their queries as the signed-in user, so Row Level Security applies there too. The secret (service role) key is used only by the reminder job, which only pg_cron can call.
+- **Row Level Security on every table.** Each user can only read and change their own rows, plus the shared kitchens of the households they're in. The `anon` role has no table access.
+- **Households are reached only through checked functions.** Users can't touch the household tables directly. Creating a household and inviting someone need a CAPTCHA that the server checks, and invites never reveal whether an email has an account.
+- **The browser only has the publishable key.** The edge functions run their queries as the signed-in user, so Row Level Security applies there too. The secret (service role) key is used only by the reminder job, which only pg_cron can call, and by the households function after it has checked the user and the CAPTCHA.
 - **AI keys stay on the server.** Gemini is only called from edge functions, and its key is an edge function secret. No secrets are kept in this repository, and `.env` files are ignored by git.
 - **AI output is checked before it's used.** Every Gemini answer is validated against a schema. Text in photos and item names is treated as data, not instructions. AI changes are only proposed, and you confirm them first. They then go through `apply_ai_changes`, which allows only a fixed list of fields, skips fields you set yourself and logs every change so it can be undone.
 - **Daily AI limits** are counted in an append-only table before every Gemini call.
-- **Bot protection:** Cloudflare Turnstile on sign up, sign in and password reset.
+- **Bot protection:** Cloudflare Turnstile on sign up, sign in and password reset, and on every new household and invite.
 - **Photos** are stored in a private bucket, readable only from the owner's folder, and deleted after 30 days.
 - **Strict browser headers:** a Content Security Policy, HSTS, `X-Frame-Options: DENY`, `nosniff`, a strict referrer policy and a Permissions-Policy that allows only the camera and microphone, for this site only.

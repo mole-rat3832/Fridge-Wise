@@ -190,7 +190,7 @@ export async function generateJson<T extends z.ZodType>(opts: GenerateOptions<T>
     while (response.status === 400 && MODES.indexOf(mode) < MODES.length - 1) {
       const why = rejection(response.json);
       if (/api key|api_key_invalid/i.test(why)) throw new AiConfigError('The Gemini API key was rejected.');
-      const next = MODES[MODES.indexOf(mode) + 1];
+      const next: Mode = MODES[MODES.indexOf(mode) + 1];
       console.warn(`Gemini rejected the request in "${mode}" mode (${why}); retrying in "${next}" mode.`);
       mode = next;
       response = await post(model, key, buildBody(opts as GenerateOptions<z.ZodType>, mode, model, note), timeoutMs);

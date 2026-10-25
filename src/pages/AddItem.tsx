@@ -2,7 +2,8 @@ import { CirclePlus, Info } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { emptyForm, ItemForm, formToColumns, type ItemFormValues } from '../components/ItemForm';
-import { ErrorNote, PageHeader, Spinner } from '../components/ui';
+import { KitchenSelect } from '../components/Kitchen';
+import { ErrorNote, Field, PageHeader, Spinner } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
 import { errorMessage, shelfLifeLookup } from '../lib/api';
 import { CATEGORIES } from '../lib/catalog';
@@ -10,6 +11,7 @@ import { addDays, formatDate } from '../lib/dates';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 import type { Category } from '../types/app';
 
@@ -23,6 +25,8 @@ interface Suggestion {
 export function AddItem() {
   const { today, locale } = useAuth();
   const { refresh } = useItems();
+  const { households, activeId, setActive } = useKitchen();
+  const [target, setTarget] = useState<string | null>(activeId);
   const toast = useToast();
   const navigate = useNavigate();
   const online = useOnline();
@@ -88,14 +92,17 @@ export function AddItem() {
       ...parsed.values,
       name: parsed.values.name!,
       expiration_source: values.expiration_date ? (usedSuggestion ? 'shelf_life_table' : 'user') : null,
+      household_id: target,
     });
     setSaving(false);
     if (err) {
       setError(errorMessage(err));
       return;
     }
-    await refresh();
-    toast.show(`${parsed.values.name} added.`, { tone: 'success' });
+    const where = target ? households.find((h) => h.id === target)?.name : null;
+    if (target !== activeId && !again) setActive(target);
+    else await refresh();
+    toast.show(where ? `${parsed.values.name} added to ${where}.` : `${parsed.values.name} added.`, { tone: 'success' });
     if (again) {
       setValues(emptyForm(today));
       setDateTouched(false);
@@ -125,6 +132,11 @@ export function AddItem() {
     <div className="mx-auto max-w-2xl">
       <PageHeader icon={<CirclePlus size={24} />} title="Add an item" subtitle={<>Prefer a photo? <Link to="/scan" className="font-semibold text-fg underline underline-offset-2">Scan it instead</Link>.</>} />
       <form onSubmit={(e) => void save(e)} className="card space-y-5 p-4 sm:p-6">
+        {households.length > 0 && (
+          <Field label="Kitchen" htmlFor="add-kitchen" hint={target ? 'Everyone in this household will see it.' : 'Only you will see it.'}>
+            <KitchenSelect id="add-kitchen" value={target} onChange={setTarget} households={households} />
+          </Field>
+        )}
         <ItemForm values={values} onChange={patch} expirationHint={hint} idPrefix="add" />
         {error && <ErrorNote>{error}</ErrorNote>}
         {!online && <ErrorNote>You're offline. Connect to save this item.</ErrorNote>}

@@ -1,4 +1,4 @@
-import { ClipboardCheck, Hand, Plus, Receipt, Refrigerator, ScanLine, Search, Sparkles } from 'lucide-react';
+import { ClipboardCheck, Hand, Mail, Plus, Receipt, Refrigerator, ScanLine, Search, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CommandBar } from '../components/CommandBar';
@@ -15,6 +15,7 @@ import { searchTokens } from '../lib/format';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 import type { Category, FoodItem, Freshness, StorageLocation } from '../types/app';
 
@@ -42,6 +43,7 @@ function groupByName(items: FoodItem[]): FoodItem[][] {
 export function Dashboard() {
   const { profile, today, locale, timeZone, user } = useAuth();
   const { items, loading, cachedAt, refresh } = useItems();
+  const { active, invites } = useKitchen();
   const online = useOnline();
   const toast = useToast();
   const undo = useUndo();
@@ -133,23 +135,31 @@ export function Dashboard() {
     }
   }
 
-  const greeting = profile?.display_name ? `Hi, ${profile.display_name}` : 'Your kitchen';
+  const greeting = active ? active.name : profile?.display_name ? `Hi, ${profile.display_name}` : 'Your kitchen';
+  const others = active ? Math.max(active.member_count - 1, 0) : 0;
   const filtersActive = query || location !== 'all' || category !== 'all';
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={greeting}
-        icon={profile?.display_name ? <Hand size={24} data-anim="wave-once" /> : <Refrigerator size={24} />}
+        icon={active ? <Users size={24} /> : profile?.display_name ? <Hand size={24} data-anim="wave-once" /> : <Refrigerator size={24} />}
         subtitle={
-          items.length === 0 && !loading ? (
-            <span data-tour="summary">Add food to start tracking it.</span>
-          ) : (
-            <span data-tour="summary">
-              <strong className="text-fg">{counts.red}</strong> to use today · <strong className="text-fg">{counts.yellow}</strong> soon ·{' '}
-              <strong className="text-fg">{counts.green}</strong> fresh
-            </span>
-          )
+          <>
+            {active && (
+              <span className="mb-1 block text-sm font-semibold">
+                Shared kitchen · you and {others} {others === 1 ? 'other person' : 'others'} see the same list
+              </span>
+            )}
+            {items.length === 0 && !loading ? (
+              <span data-tour="summary">Add food to start tracking it.</span>
+            ) : (
+              <span data-tour="summary">
+                <strong className="text-fg">{counts.red}</strong> to use today · <strong className="text-fg">{counts.yellow}</strong> soon ·{' '}
+                <strong className="text-fg">{counts.green}</strong> fresh
+              </span>
+            )}
+          </>
         }
         actions={
           <>
@@ -167,6 +177,18 @@ export function Dashboard() {
         <p className="rounded-xl bg-tint px-3 py-2 text-sm text-fg-2">Showing your list as of {formatDateTime(cachedAt, locale, timeZone)}.</p>
       )}
 
+      {invites.length > 0 && (
+        <Link to="/households" className="card flex items-center gap-3 border-l-4 border-l-lime px-4 py-3 font-semibold hover:bg-tint">
+          <Mail size={20} aria-hidden data-anim="wiggle-once" />
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {invites.length === 1
+              ? `${invites[0].invited_by_name ?? invites[0].invited_by_email ?? 'Someone'} invited you to ${invites[0].household_name}`
+              : `You have ${invites.length} household invites`}
+          </span>
+          <span className="ml-auto shrink-0 text-sm text-fg-2 underline underline-offset-2">View</span>
+        </Link>
+      )}
+
       {pendingScans > 0 && online && (
         <Link to="/scan" className="card flex items-center gap-3 px-4 py-3 font-semibold hover:bg-tint">
           <ClipboardCheck size={20} aria-hidden data-anim="pop" />
@@ -175,7 +197,8 @@ export function Dashboard() {
       )}
 
       <div data-tour="command">
-        <CommandBar locale={locale} />
+        {/* Keyed by kitchen: a pending question or proposal belongs to the kitchen it was asked in. */}
+        <CommandBar key={active?.id ?? 'own'} locale={locale} />
       </div>
 
       {loading && items.length === 0 ? (
@@ -185,7 +208,7 @@ export function Dashboard() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={<Refrigerator size={40} />}
-          title="Nothing tracked yet"
+          title={active ? `Nothing in ${active.name} yet` : 'Nothing tracked yet'}
           actions={
             <>
               <Link to="/scan?type=receipt" className="btn btn-primary">
@@ -202,7 +225,9 @@ export function Dashboard() {
             </>
           }
         >
-          Snap a grocery receipt or a single product and FridgeWise fills in the details and expiration dates for you.
+          {active
+            ? 'Scan or add food here and everyone in the household will see it.'
+            : 'Snap a grocery receipt or a single product and FridgeWise fills in the details and expiration dates for you.'}
         </EmptyState>
       ) : (
         <>

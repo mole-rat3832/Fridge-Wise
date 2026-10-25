@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 // Privacy Policy, Terms of Service and End User License Agreement. Written to match what the app
 // actually does (see README "Security and privacy" and the migrations); update both together.
-const UPDATED = 'October 14, 2026';
+const UPDATED = 'October 24, 2026';
 const REPO = 'https://github.com/mole-rat3832/Fridge-Wise';
 const CONTACT = `${REPO}/issues`;
 
@@ -123,6 +123,8 @@ const RETENTION: Array<[string, string]> = [
   ['Account, profile and settings', 'Until you delete your account'],
   ['Food items, change history and saved recipes', 'Until you delete them or your account'],
   ['Scan photos', '30 days after upload, then deleted automatically (or right away when you delete your account)'],
+  ['Household memberships', 'Until you leave the household, it is deleted, or you delete your account'],
+  ['Household invites', 'Until they are accepted, declined or cancelled, and at most 30 days'],
   ['Unsaved recipe ideas', '14 days'],
   ['Daily limit counters (time and type of each AI request)', '35 days'],
   ['Push subscription and reminder log', 'Until you turn reminders off, the subscription expires, or you delete your account'],
@@ -137,7 +139,7 @@ export function PrivacyPolicy() {
       icon={ShieldCheck}
       summary={[
         'We collect what the app needs to work: your account details, the food you add, and the photos you scan.',
-        'Only you can see your kitchen. We do not sell your data, show ads or use third-party trackers.',
+        'Only you can see your kitchen, unless you join a household: then its members see that shared kitchen and each other\'s names and emails. We do not sell your data, show ads or use third-party trackers.',
         'Scan photos and the text of your AI requests are sent to Google Gemini to read receipts, understand updates and suggest recipes.',
         'Scan photos are deleted after 30 days. You can export your data or delete your account, and everything in it, at any time in Settings.',
         'FridgeWise is not meant for children under 13.',
@@ -161,12 +163,16 @@ export function PrivacyPolicy() {
             <>
               <p>
                 <strong>Account.</strong> Your email address and password (stored only as a secure hash by our authentication provider, never in readable form), and the
-                optional name you give. When you set up, we also store your household size, timezone, date format, reminder preferences and when you finished setup.
+                optional name you give. When you set up, we also store how many people you cook for, your timezone, date format, reminder preferences and when you finished setup.
               </p>
               <p>
                 <strong>Your kitchen.</strong> The food you add or scan (name, brand, category, quantity, unit, storage place, price, barcode, purchase and expiration dates,
                 notes, and whether it was used or tossed), the history of changes to each item (old and new values, whether you or the AI made the change, and how sure the AI
                 was), and the recipes you save or generate.
+              </p>
+              <p>
+                <strong>Households.</strong> If you create or join a household, we store its name, who is in it and their role (owner or member), and when they joined. If
+                you invite someone, we store the email address you entered, who sent the invite and when, until it is used, cancelled or expires (after 30 days).
               </p>
               <p>
                 <strong>Photos.</strong> The receipt and product photos you scan. Photos are made smaller in your browser before upload and stored privately. Receipts can show
@@ -182,8 +188,8 @@ export function PrivacyPolicy() {
               </p>
               <p>
                 <strong>Technical data.</strong> Like any website, our hosting and database providers receive your IP address and basic request information (such as browser
-                type and time) to deliver the service, keep it secure and fix problems. The sign-up and sign-in pages use Cloudflare Turnstile, which checks signals from your
-                browser to tell people from bots.
+                type and time) to deliver the service, keep it secure and fix problems. The sign-up and sign-in pages, and creating a household or inviting someone, use
+                Cloudflare Turnstile, which checks signals from your browser to tell people from bots.
               </p>
               <p>
                 <strong>On your device.</strong> The app saves some data in your browser's storage: your sign-in session, an offline copy of your list and profile, your
@@ -250,6 +256,12 @@ export function PrivacyPolicy() {
           title: 'Service providers and sharing',
           body: (
             <>
+              <p>
+                <strong>People in your households.</strong> When you are in a household, everyone in it can see your name and email address, the items in that shared kitchen
+                (including who added them and who changed them), its stats, and the email addresses of people invited to it. Someone you invite sees your name and email with
+                the invite. Your own kitchen, scan photos, recipes, exports and AI limits are never shared. Items you add to a household stay there for the others if you
+                leave, and if you delete your account they are handed to the household's owner without your name.
+              </p>
               <p>We share personal information only with the providers that run FridgeWise for us, and only as needed for that:</p>
               <ul>
                 <li>
@@ -262,7 +274,7 @@ export function PrivacyPolicy() {
                   <strong>Netlify</strong>: hosts and delivers the website.
                 </li>
                 <li>
-                  <strong>Cloudflare</strong>: Turnstile bot protection on the sign-up, sign-in and password pages.
+                  <strong>Cloudflare</strong>: Turnstile bot protection on the sign-up, sign-in and password pages, and when creating households or inviting people.
                 </li>
                 <li>
                   <strong>Your browser's push service</strong> (for example Google, Apple, Mozilla or Microsoft): delivers notifications. Reminder contents are encrypted on
@@ -344,7 +356,8 @@ export function PrivacyPolicy() {
           title: 'Security',
           body: (
             <p>
-              Data is encrypted in transit (HTTPS). Database rules (row-level security) make sure each account can only read and change its own data, scan photos are in a
+              Data is encrypted in transit (HTTPS). Database rules (row-level security) make sure each account can only read and change its own data and the shared
+              kitchens of the households it belongs to, scan photos are in a
               private storage area, sign-in is protected against bots, and secret keys are kept on the server only. No system is perfectly secure, so please use a strong,
               unique password. If we learn of a breach that affects you, we will tell you as the law requires.
             </p>
@@ -468,6 +481,22 @@ export function TermsOfService() {
           ),
         },
         {
+          id: 'households',
+          title: 'Households',
+          body: (
+            <>
+              <p>
+                A household is a kitchen you share with people you choose. Everyone in it can see, add, change and use up its items, and can see each other's names and email
+                addresses. Only invite people you live or cook with, and only enter email addresses you have permission to use.
+              </p>
+              <p>
+                The person who created a household owns it and can rename it, remove people and delete it. You can leave a household at any time. Items you add to a household
+                become part of the shared kitchen: if you leave, they stay there for the others.
+              </p>
+            </>
+          ),
+        },
+        {
           id: 'acceptable-use',
           title: 'Acceptable use',
           body: (
@@ -476,7 +505,8 @@ export function TermsOfService() {
               <ul>
                 <li>break the law or anyone's rights, or upload content that is illegal, hateful, harassing or sexually explicit;</li>
                 <li>try to access other people's data, probe or attack the service's security, or interfere with how it runs;</li>
-                <li>get around the daily limits, use automated scripts or bots, scrape the service, or resell access to it;</li>
+                <li>get around the daily limits or the security checks, use automated scripts or bots, scrape the service, or resell access to it;</li>
+                <li>send household invites to people who haven't asked for them, or use invites to spam or harass anyone;</li>
                 <li>use the AI features to create harmful content, or try to make the AI ignore its instructions;</li>
                 <li>upload malware or anything designed to damage devices or data;</li>
                 <li>impersonate anyone, or misrepresent your connection to FridgeWise.</li>

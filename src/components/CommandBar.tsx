@@ -7,6 +7,7 @@ import { useOnline } from '../hooks/useOnline';
 import { useUndo } from '../hooks/useUndo';
 import { aiCommand, applyAiChanges, errorMessage } from '../lib/api';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 import type { CommandResponse } from '../types/app';
 import { ChangePreview } from './ChangePreview';
@@ -34,6 +35,7 @@ export function CommandBar({ locale }: { locale: string }) {
   const online = useOnline();
   const toast = useToast();
   const { refresh } = useItems();
+  const { activeId } = useKitchen();
   const undo = useUndo();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -55,7 +57,7 @@ export function CommandBar({ locale }: { locale: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await aiCommand(value, question ?? undefined);
+      const res = await aiCommand(value, question ?? undefined, activeId);
       if (res.clarification) {
         setQuestion({ request: question?.request ?? value, question: res.clarification });
         setText('');
@@ -78,7 +80,7 @@ export function CommandBar({ locale }: { locale: string }) {
     if (!proposal) return;
     setApplying(true);
     try {
-      const result = await applyAiChanges(proposal.operations, 'ai_command', proposal.model);
+      const result = await applyAiChanges(proposal.operations, 'ai_command', proposal.model, activeId);
       await refresh();
       setProposal(null);
       setText('');

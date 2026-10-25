@@ -22,6 +22,7 @@ import {
   Trash,
   Type,
   UserRound,
+  Users,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -38,6 +39,7 @@ import { supabase } from '../lib/supabase';
 import { ACCENTS, FONTS, getAppearance, setAppearance, THEMES, type Appearance } from '../lib/theme';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 
 const LOCALES = [
@@ -103,6 +105,7 @@ function Section({ icon, title, children }: { icon: ReactNode; title: string; ch
 export function Settings() {
   const { user, profile, updateProfile, signOut, timeZone } = useAuth();
   const { refresh } = useItems();
+  const { households, invites } = useKitchen();
   const toast = useToast();
   const navigate = useNavigate();
   const online = useOnline();
@@ -158,7 +161,8 @@ export function Settings() {
 
   async function exportItems() {
     setBusy('export-items');
-    const { data, error } = await supabase.from('food_items').select('*').order('created_at');
+    // Everything you added, wherever it is (household items included); not other people's items.
+    const { data, error } = await supabase.from('food_items').select('*').eq('user_id', user!.id).order('created_at');
     setBusy(null);
     if (error) return toast.show(error.message, { tone: 'error' });
     const cols = ['name', 'brand', 'category', 'storage_location', 'quantity', 'unit', 'status', 'purchase_date', 'expiration_date', 'expiration_source', 'opened_at', 'price_cents', 'barcode', 'notes', 'consumed_at', 'wasted_at', 'created_at', 'updated_at', 'id'];
@@ -167,7 +171,7 @@ export function Settings() {
 
   async function exportHistory() {
     setBusy('export-history');
-    const { data, error } = await supabase.from('ai_edit_log').select('*').order('created_at').limit(10000);
+    const { data, error } = await supabase.from('ai_edit_log').select('*').eq('user_id', user!.id).order('created_at').limit(10000);
     setBusy(null);
     if (error) return toast.show(error.message, { tone: 'error' });
     const cols = ['created_at', 'source', 'action', 'field', 'old_value', 'new_value', 'confidence', 'model', 'reason', 'reverted_at', 'food_item_id', 'scan_id', 'batch_id'];
@@ -235,7 +239,7 @@ export function Settings() {
           </div>
           <div>
             <label className="label" htmlFor="s-household">
-              People in your household
+              People you usually cook for
             </label>
             <select
               id="s-household"
@@ -253,6 +257,21 @@ export function Settings() {
               ))}
             </select>
           </div>
+        </div>
+      </Section>
+
+      <Section icon={<Users size={20} aria-hidden />} title="Households">
+        <p className="text-sm text-fg-2">
+          Share a kitchen with the people you live with: everyone sees the same food, and anything one of you scans or adds shows up for the others.{' '}
+          {households.length === 0
+            ? "You're not in a household yet."
+            : `You're in ${households.length === 1 ? households[0].name : `${households.length} households`}.`}
+        </p>
+        <div>
+          <Link to="/households" className="btn btn-secondary">
+            <Users size={18} aria-hidden data-anim="bounce" /> {households.length === 0 ? 'Create or join a household' : 'Manage households'}
+            {invites.length > 0 && <span className="rounded-full bg-lime px-2 py-0.5 text-xs font-extrabold text-ink">{invites.length} new</span>}
+          </Link>
         </div>
       </Section>
 
@@ -595,6 +614,11 @@ export function Settings() {
         }
       >
         <p>This permanently deletes your account, all your food items, history, recipes, scan photos and notification settings. It can't be undone.</p>
+        {households.length > 0 && (
+          <p className="mt-2">
+            You'll also leave your households. Items you added to a household stay there for the others, and ownership passes to the next person.
+          </p>
+        )}
         <p className="mt-2 text-sm text-fg-2">Tip: export your data first.</p>
         <label className="label mt-4" htmlFor="confirm-delete">
           Type DELETE to confirm

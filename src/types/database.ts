@@ -144,6 +144,7 @@ export type Database = {
           created_at: string;
           expiration_date: string | null;
           expiration_source: Database["public"]["Enums"]["field_source"] | null;
+          household_id: string | null;
           id: string;
           image_path: string | null;
           is_demo: boolean;
@@ -172,6 +173,7 @@ export type Database = {
           created_at?: string;
           expiration_date?: string | null;
           expiration_source?: Database["public"]["Enums"]["field_source"] | null;
+          household_id?: string | null;
           id?: string;
           image_path?: string | null;
           is_demo?: boolean;
@@ -199,6 +201,7 @@ export type Database = {
           created_at?: string;
           expiration_date?: string | null;
           expiration_source?: Database["public"]["Enums"]["field_source"] | null;
+          household_id?: string | null;
           id?: string;
           image_path?: string | null;
           is_demo?: boolean;
@@ -219,6 +222,13 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: "food_items_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "food_items_scan_item_fk";
             columns: ["scan_item_id"];
             isOneToOne: false;
@@ -226,6 +236,94 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      household_invites: {
+        Row: {
+          created_at: string;
+          email: string;
+          household_id: string;
+          id: string;
+          invited_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          email: string;
+          household_id: string;
+          id?: string;
+          invited_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+          household_id?: string;
+          id?: string;
+          invited_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "household_invites_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      household_members: {
+        Row: {
+          household_id: string;
+          joined_at: string;
+          role: Database["public"]["Enums"]["household_role"];
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          household_id: string;
+          joined_at?: string;
+          role?: Database["public"]["Enums"]["household_role"];
+          user_id: string;
+        };
+        Update: {
+          household_id?: string;
+          joined_at?: string;
+          role?: Database["public"]["Enums"]["household_role"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      households: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -570,6 +668,7 @@ export type Database = {
     Views: {
       user_stats: {
         Row: {
+          household_id: string | null;
           items_used: number | null;
           items_wasted: number | null;
           money_saved_cents: number | null;
@@ -585,12 +684,14 @@ export type Database = {
     Functions: {
       ai_usage_today: { Args: Record<PropertyKey, never>; Returns: Json };
       apply_ai_changes: {
-        Args: { p_batch: Json; p_model?: string; p_source: Database["public"]["Enums"]["edit_log_source"] };
+        Args: { p_batch: Json; p_household_id?: string; p_model?: string; p_source: Database["public"]["Enums"]["edit_log_source"] };
         Returns: Json;
       };
       claim_ai_quota: { Args: { p_kind: string; p_ref_id?: string }; Returns: Json };
       clear_demo_data: { Args: Record<PropertyKey, never>; Returns: number };
-      confirm_scan: { Args: { p_items: Json; p_scan_id: string }; Returns: Json };
+      confirm_scan: { Args: { p_household_id?: string; p_items: Json; p_scan_id: string }; Returns: Json };
+      create_household: { Args: { p_name: string; p_user_id: string }; Returns: Json };
+      delete_household: { Args: { p_household_id: string }; Returns: undefined };
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
       due_reminders: {
         Args: Record<PropertyKey, never>;
@@ -601,9 +702,18 @@ export type Database = {
           user_id: string;
         }[];
       };
+      household_details: { Args: { p_household_id: string }; Returns: Json };
+      invite_to_household: { Args: { p_email: string; p_household_id: string; p_user_id: string }; Returns: Json };
+      leave_household: { Args: { p_household_id: string }; Returns: Json };
       load_demo_data: { Args: Record<PropertyKey, never>; Returns: Json };
+      my_household_invites: { Args: Record<PropertyKey, never>; Returns: Json };
+      my_households: { Args: Record<PropertyKey, never>; Returns: Json };
       record_item_use: { Args: { p_amount?: number; p_item_id: string }; Returns: Json };
       record_item_waste: { Args: { p_item_id: string }; Returns: Json };
+      remove_household_member: { Args: { p_household_id: string; p_user_id: string }; Returns: undefined };
+      rename_household: { Args: { p_household_id: string; p_name: string }; Returns: undefined };
+      respond_to_household_invite: { Args: { p_accept: boolean; p_invite_id: string }; Returns: Json };
+      revoke_household_invite: { Args: { p_invite_id: string }; Returns: undefined };
       shelf_life_lookup: { Args: { p_items: Json }; Returns: Json };
       store_vapid_keys: {
         Args: { p_private: string; p_public: string };
@@ -639,6 +749,7 @@ export type Database = {
         | "condiments"
         | "leftovers"
         | "other";
+      household_role: "owner" | "member";
       item_status: "active" | "used" | "wasted";
       printed_date_type: "best_by" | "use_by" | "sell_by" | "expires" | "freeze_by" | "other";
       scan_status: "uploaded" | "processing" | "needs_review" | "confirmed" | "failed" | "discarded";
@@ -737,9 +848,7 @@ export type Enums<
     : never;
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
@@ -774,6 +883,7 @@ export const Constants = {
         "leftovers",
         "other",
       ],
+      household_role: ["owner", "member"],
       item_status: ["active", "used", "wasted"],
       printed_date_type: ["best_by", "use_by", "sell_by", "expires", "freeze_by", "other"],
       scan_status: ["uploaded", "processing", "needs_review", "confirmed", "failed", "discarded"],

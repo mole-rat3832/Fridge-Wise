@@ -13,6 +13,7 @@ import { expiryPhrase, freshness } from '../lib/dates';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 import type { FoodItem, ProposedOperation, Recipe, RecipeIngredient } from '../types/app';
 
@@ -21,6 +22,7 @@ type Choice = 'all' | 'some' | 'none';
 export function Recipes() {
   const { profile, today, user } = useAuth();
   const { items, refresh } = useItems();
+  const { activeId, active } = useKitchen();
   const toast = useToast();
   const undo = useUndo();
   const online = useOnline();
@@ -66,7 +68,7 @@ export function Recipes() {
     setError(null);
     setLastBrief(brief);
     try {
-      const res = await suggestRecipes({ servings: profile?.household_size ?? undefined, conversation, brief });
+      const res = await suggestRecipes({ servings: profile?.household_size ?? undefined, conversation, brief, householdId: activeId });
       setFresh(res.recipes.map((r) => r.id));
       await load();
       scrollToIdeas.current = true;
@@ -126,7 +128,7 @@ export function Recipes() {
     }
     setApplying(true);
     try {
-      const res = await applyAiChanges(ops, 'ai_recipe', made.model);
+      const res = await applyAiChanges(ops, 'ai_recipe', made.model, activeId);
       await supabase.from('recipes').update({ made_at: new Date().toISOString() }).eq('id', made.id);
       await Promise.all([refresh(), load()]);
       setMade(null);
@@ -205,7 +207,11 @@ export function Recipes() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Recipes" subtitle="Ideas that use the food closest to expiring. Tell the chef what you feel like first, or just generate." icon={<ChefHat size={24} />} />
+      <PageHeader
+        title="Recipes"
+        subtitle={`Ideas that use the food closest to expiring${active ? ` in ${active.name}` : ''}. Tell the chef what you feel like first, or just generate.`}
+        icon={<ChefHat size={24} />}
+      />
 
       {loading ? (
         <div className="flex justify-center py-16">

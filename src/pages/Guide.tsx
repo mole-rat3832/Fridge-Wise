@@ -1,22 +1,4 @@
-import {
-  ArrowRight,
-  BellRing,
-  BookOpen,
-  ChartColumn,
-  ChefHat,
-  Compass,
-  Download,
-  Gauge,
-  Lightbulb,
-  MessageSquareText,
-  Mic,
-  Palette,
-  Plus,
-  ScanLine,
-  Search,
-  Target,
-  UserRound,
-} from 'lucide-react';
+import { ArrowRight, BellRing, BookOpen, ChartColumn, ChefHat, Compass, Download, Gauge, Lightbulb, MessageSquareText, Mic, Palette, Plus, ScanLine, Search, Target, UserRound, Users } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTour } from '../components/Tour';
@@ -196,6 +178,19 @@ const STEPS: GuideStep[] = [
         offline from your last saved list.
       </>
     ),
+  },
+  {
+    id: 'households',
+    icon: <Users size={22} />,
+    title: 'Share a kitchen with your household',
+    children: (
+      <>
+        Open <strong>Households</strong> (in the sidebar, or <strong>Settings → Households</strong> on phones), give your household a name and invite the people
+        you live with by email. Once they join, everyone sees the same food list: anything one of you scans, adds or uses up shows up for the others right
+        away. Switch between <strong>My kitchen</strong> and your households with the <strong>Kitchen</strong> picker at the top.
+      </>
+    ),
+    tip: 'Creating a household and each invite need a quick security check. Your photos, recipe ideas and daily AI limits stay yours, and you can leave a household at any time.',
   },
   {
     id: 'reminders',

@@ -9,6 +9,7 @@ import { searchTokens } from '../lib/format';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
 import type { FoodItem } from '../types/app';
+import { useKitchen } from '../state/kitchen';
 
 function matches(item: FoodItem, term: string): boolean {
   const want = searchTokens(term);
@@ -20,6 +21,7 @@ function matches(item: FoodItem, term: string): boolean {
 export function ShoppingCheck() {
   const { profile, today } = useAuth();
   const { items } = useItems();
+  const { active } = useKitchen();
   const [text, setText] = useState('');
   const rdb = profile?.reminder_days_before ?? 2;
 
@@ -42,7 +44,11 @@ export function ShoppingCheck() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader icon={<ShoppingBasket size={24} />} title="Do I have it?" subtitle="Check what's at home before you buy more. Separate items with commas or new lines." />
+      <PageHeader
+        icon={<ShoppingBasket size={24} />}
+        title="Do I have it?"
+        subtitle={`Check what's in ${active ? active.name : 'your kitchen'} before you buy more. Separate items with commas or new lines.`}
+      />
       <div className="card p-4 sm:p-5">
         <label htmlFor="check" className="label">
           Your shopping list

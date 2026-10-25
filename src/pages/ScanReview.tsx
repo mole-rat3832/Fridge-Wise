@@ -3,6 +3,7 @@
 import { ArrowLeft, Info, ListChecks, RefreshCw, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { KitchenSelect } from '../components/Kitchen';
 import { EmptyState, ErrorNote, Field, PageHeader, Spinner } from '../components/ui';
 import { useOnline } from '../hooks/useOnline';
 import { useUndo } from '../hooks/useUndo';
@@ -12,6 +13,7 @@ import { addDays, diffDays, formatDate } from '../lib/dates';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useItems } from '../state/items';
+import { useKitchen } from '../state/kitchen';
 import { useToast } from '../state/toast';
 import type { Category, Scan, ScanItem, StorageLocation, Unit } from '../types/app';
 
@@ -59,6 +61,8 @@ export function ScanReview() {
   const { id } = useParams<{ id: string }>();
   const { today, locale } = useAuth();
   const { refresh } = useItems();
+  const { households, activeId, setActive } = useKitchen();
+  const [target, setTarget] = useState<string | null>(activeId);
   const toast = useToast();
   const undo = useUndo();
   const navigate = useNavigate();
@@ -180,9 +184,12 @@ export function ScanReview() {
     }
     setSaving(true);
     try {
-      const res = await confirmScan(scan.id, payload);
-      await refresh();
-      toast.show(`Added ${res.created_count} item${res.created_count === 1 ? '' : 's'} to your kitchen.`, {
+      const res = await confirmScan(scan.id, payload, target);
+      // Show the kitchen the items went into.
+      if (target !== activeId) setActive(target);
+      else await refresh();
+      const where = target ? (households.find((h) => h.id === target)?.name ?? 'the household') : 'your kitchen';
+      toast.show(`Added ${res.created_count} item${res.created_count === 1 ? '' : 's'} to ${where}.`, {
         tone: 'success',
         action: { label: 'Undo', onClick: () => undo(res.batch_id) },
       });
@@ -282,6 +289,14 @@ export function ScanReview() {
           </div>
           <Field label="Purchase date" htmlFor="purchase-date" hint="Changing it moves the estimated expiration dates too.">
             <input id="purchase-date" type="date" className="input" value={purchaseDate} max={today} onChange={(e) => changePurchaseDate(e.target.value)} />
+          </Field>
+        </div>
+      )}
+
+      {households.length > 0 && (
+        <div className="card p-4 sm:p-5">
+          <Field label="Add these items to" htmlFor="scan-kitchen" hint="Everyone in a household sees what is added there. Your photo stays private.">
+            <KitchenSelect id="scan-kitchen" value={target} onChange={setTarget} households={households} className="input sm:max-w-sm" />
           </Field>
         </div>
       )}
